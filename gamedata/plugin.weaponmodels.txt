@@ -1,0 +1,73 @@
+"Games"
+{
+	"#default"
+	{
+		// tf2, dod, cstrike, hl2mp
+		"Offsets"
+		{
+			"UpdateTransmitState"
+			{
+				"windows"	"19"
+				"linux"		"20"
+			}
+			"StudioHdr"
+			{
+				"windows"	"60"
+				"linux"		"60"
+			}
+			"SequenceCount"
+			{
+				"windows"	"188"
+				"linux"		"188"
+			}
+		}
+	}
+	"csgo"
+	{
+		"Offsets"
+		{
+			"UpdateTransmitState"
+			{
+				"windows"	"21"
+				"linux"		"22"
+			}
+			"StudioHdr"
+			{
+				"windows"	"68"
+				"linux"		"68"
+			}
+		}
+	}
+	"left4dead"
+	{
+		"Offsets"
+		{
+			"UpdateTransmitState"
+			{
+				"windows"	"18"
+				"linux"		"19"
+			}
+			"StudioHdr"
+			{
+				"windows"	"40"
+				"linux"		"40"
+			}
+		}
+	}
+	"left4dead2"
+	{
+		"Offsets"
+		{
+			"UpdateTransmitState"
+			{
+				"windows"	"20"
+				"linux"		"21"
+			}
+			"StudioHdr"
+			{
+				"windows"	"3788"
+				"linux"		"3784"
+			}
+		}
+	}
+}
