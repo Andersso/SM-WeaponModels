@@ -3,18 +3,18 @@ Weapon Models plugin for SourceMod
 
 This is a SourceMod plugin which allows you to change both world and view model of any weapon server-side. The plugin provides both a config file and a simple but powerful API for adding custom weapon models.
 
-### Disclaimer ######
+## Disclaimer
 This is by far not intended to work by Valve, and the implementation is pretty much a hack. 
 
-### List of compatible games ######
+## List of compatible games
  * **Counter-Strike: Source**
- * **Counter-Strike: Global Offensive** - Arm model needs to be included
+ * **Counter-Strike: Global Offensive** - *Arm model needs to be included*
  * **Day of Defeat: Source**
- * **Team-Fortress 2** - Arm model and animations needs to be included
+ * **Team-Fortress 2** - *Arm model and animations needs to be included*
 
-### Requirements ######
+## Requirements
  * SourceMod 1.5 or higher
- * A model
+ * A custom view model - see [How to create a custom view model](#how-to-create-a-custom-view-model-)
 
 ## How to create a custom view model
 In order to create a functional custom model, a few changes need to be made
@@ -25,19 +25,56 @@ to your view model. Here is the list of things of what you will have to do.
 3. To prevent name conflicts, add an underscore in front of all the copied sequence names, from example idle to _idle. However, do not change name of the quoted string that is directly after.
 4. Remove the activity associated with all the copied sequences. The activity name always starts with "ACT_VM_" and is then followed by a number, remove both of those.
 
-*If you followed the last steps correctly, a copied sequence should look something like this:*
+    *If you followed the last steps correctly, a copied sequence should look something like this:*
 
-Before:
-```
-$sequence shoot1 "shoot1" ACT_VM_PRIMARYATTACK 1 fps 60.00 {
-    { event 5001 0 "31" }
-    { event 6002 2 "0" }
-}
-```
-After:
-```
-$sequence _shoot1 "shoot1" fps 60.00 {
-    { event 5001 0 "31" }
-    { event 6002 2 "0" }
-}
-```
+    ##### Before:
+    ```
+    $sequence shoot1 "shoot1" ACT_VM_PRIMARYATTACK 1 fps 60.00 {
+        { event 5001 0 "31" }
+        { event 6002 2 "0" }
+    }
+    ```
+    ##### After:
+    ```
+    $sequence _shoot1 "shoot1" fps 60.00 {
+        { event 5001 0 "31" }
+        { event 6002 2 "0" }
+    }
+    ```
+5. This step is ONLY required for games that use external arm models. (CS:GO/L4D(2)) Unfortunately, the arm models does not attach properly to the custom view model. And therefore it needs to get included to view model manually. To do this, you will have to decompile your desired arms model, and then include it by adding an additional $model key for it inside the QC.
+6. This step is ONLY required for games that has client-predicted weapon switching. (CS:GO/L4D(2)/Portal 2(???)) Since weapon switching is client-predicted, it's not possible to stop the the drawing animation of the original view model. This means that you can't stop the drawing sound effect either. To prevent multiple drawing sounds from playing simultaneously, you will have to remove the draw sound effect in your custom view model. Find the draw sequence either by its commonly referred name or by its activity name (ACT_VM_DRAW) and remove all events that are followed by number 5004. Do the same for the copied sequence.
+
+    *If you followed the last step correctly, the result should look something like this:*
+
+    ##### Before:
+    ```
+    $sequence draw "draw" ACT_VM_DRAW 1 snap rotate -90 fps 32.00 {
+        { event 5004 0 "Weapon_Colt.Draw" }
+        { event 5001 0 "1" }
+    }
+    ```
+    *Copied sequence:*
+    ```
+    $sequence _draw "draw" snap rotate -90 fps 32.00 {
+        { event 5004 0 "Weapon_Colt.Draw" }
+        { event 5001 0 "1" }
+    }
+    ```
+    ##### After:
+    ```
+    $sequence draw "draw" ACT_VM_DRAW 1 snap rotate -90 fps 32.00 {
+        { event 5001 0 "1" }
+    }
+    ```
+    *Copied sequence:*
+    ```
+    $sequence _draw "draw" snap rotate -90 fps 32.00 {
+        { event 5001 0 "1" }
+    }
+    ```
+7. Set a new name to your model, and compile it.
+8. Edit weaponmodels_config.cfg and add your new model, and you are done.
+
+    *For world models, I suggest doing a hex edit if you need to the change model name. Since they don't require any special edits, it saves you from the hassle of decompiling and compiling.*
+
+
