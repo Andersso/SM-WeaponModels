@@ -14,7 +14,7 @@ This is by far not intended to work by Valve, and the implementation is pretty m
 
 ## Requirements
  * SourceMod 1.5 or higher
- * A custom view model - see [How to create a custom view model](#how-to-create-a-custom-view-model-)
+ * A custom view model - see [How to create a custom view model](#how-to-create-a-custom-view-model)
 
 ## How to create a custom view model
 In order to create a functional custom model, a few changes need to be made
