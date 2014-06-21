@@ -43,39 +43,12 @@ Inside the config you should find a key named "ViewModelConfig". Inside this key
 
 The API consists of these natives:
 ```PAWN
-/**
- * @brief Adds a weapon model
- *
- * @param		className		Class name of the weapon to add.
- * @param		viewModel		Model path of the view model, or NULL_STRING for no change.
- * @param		worldModel		Model path of the world model, or NULL_STRING for no change.
- * @param		function		Function to call when weapon is selected.
- * @return						The custom weapon model index, -1 on failure.
- * @error						Maximum amount of custom weapons has been reached.
- */
-native WeaponModels_AddWeaponByClassName(const String:className[], const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
-
-/**
- * @brief Adds a weapon model
- *
- * @param		itemDefIndex	item definition index of the weapon to add.
- * @param		viewModel		Model path of the view model, or NULL_STRING for no change.
- * @param		worldModel		Model path of the world model, or NULL_STRING for no change.
- * @param		function		Function to call when weapon is selected.
- * @return						The custom weapon model index, -1 on failure.
- * @error						Maximum amount of custom weapons has been reached.
- */
+native eaponModels_AddWeaponByClassName(const String:className[], const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
+ 
 native WeaponModels_AddWeaponByItemDefIndex(itemDefIndex, const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
-
-/**
- * @brief Removes a weapon model
- *
- * @param		weaponIndex		The weapon index returned from WeaponModels_AddWeaponBy...()
- * @noreturn
- * @error						Weapon index is invalid
- */
 native WeaponModels_RemoveWeaponModel(weaponIndex);
 ```
+Full documentation of the natives can be found [here](scripting/include/weaponmodels.inc#L51)
 
 Here is an example
 ```PAWN
