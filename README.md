@@ -47,7 +47,7 @@ native eaponModels_AddWeaponByClassName(const String:className[], const String:v
 native WeaponModels_AddWeaponByItemDefIndex(itemDefIndex, const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
 native WeaponModels_RemoveWeaponModel(weaponIndex);
 ```
-Full documentation of the natives can be found [here](scripting/include/weaponmodels.inc#L51)
+*Full documentation of the natives can be found [here](scripting/include/weaponmodels.inc#L51)*
 
 Here is an example
 ```PAWN
