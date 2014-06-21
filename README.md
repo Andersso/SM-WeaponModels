@@ -189,22 +189,33 @@ to your view model. Here is the list of things of what you will have to do.
 
 Name | Class-Name
 --- | ---
-Desert Eagle | weapon_deagle
-Dual Berettas | weapon_elite
+Glock 18 | weapon_glock
+USP | weapon_usp
+P228 | weapon_p228
+Desert Eagle | weapon_deagle 
+Dual Elites | weapon_elite 
+Five-seveN | weapon_fiveseven 
+M3 | weapon_m3 
+XM1014 | weapon_xm1014 
+Galil | weapon_galil 
+AK47 | weapon_ak47 
+Scout | weapon_scout 
+SG552 | weapon_sg552 
+AWP | weapon_awp 
+G3SG1 | weapon_gs3g1 
+FAMAS | weapon_famas 
+M4A1 | weapon_m4a1 
+AUG | weapon_aug 
+SG550 | weapon_sg550 
+MAC-10 | weapon_mac10 
+TMP | weapon_tmp 
+MP5 Navy | weapon_mp5navy 
+UMP-45 | weapon_ump45 
+P90 | weapon_p90 
 M249 | weapon_m249
-M4A1 | weapon_m4a1
-MAC-10 | weapon_mac10
-P90 | weapon_p90
-TMP | weapon_tmp
-MP5Navy | weapon_mp5navy
-UMP-45 | weapon_ump45
-XM1014 | weapon_xm1014
-M3 | weapon_m3
-SG550 | weapon_sg550
-Knife | weapon_knife
-Flashbang | weapon_flashbang
-High Explosive Grenade | weapon_hegrenade
-Smoke Grenade | weapon_smokegrenade
+Flashbang | weapon_flashbang 
+High Explosive Grenade | weapon_hegrenade 
+Smoke Grenade | weapon_smokegrenade 
 C4 Explosive | weapon_c4
 
 ##List of weapons - CS:GO
