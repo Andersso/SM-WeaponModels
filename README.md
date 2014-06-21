@@ -31,7 +31,7 @@ Inside the config you should find a key named "ViewModelConfig". Inside this key
 ```
 *Note that you can just leave out any of the keys you wish not to use*
 
-###List of weapons, class names and item definition indexes
+###List of weapons, class-names and item definition indexes
  * [Counter-Strike: Source](#list-of-weapons---css)
  * [Counter-Strike: Global Offensive](#list-of-weapons---csgo)
  * [Day of Defeat: Source](#list-of-weapons---dods)
