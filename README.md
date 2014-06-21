@@ -143,10 +143,10 @@ to your view model. Here is the list of things of what you will have to do.
         { event 6002 2 "0" }e to stop the the drawing animation of the original view model. This means that you can't stop the drawing sound effect either. To prevent multiple drawing sounds from playing simultaneously, you will have to remove the draw sound effect in your custom view model. Find the draw sequence either by its commonly referred name or by its activity name (ACT_VM_DRAW) and remove all events that are followed by number 5004. Do the same for the copied sequence.
     }
     ```
-5. This step is **ONLY** required for games that use external arm models. (CS:GO/L4D(2))
+5. This step is **ONLY** required for games that use external arm models. (CS:GO)
     Unfortunately, the arm models does not attach properly to the custom view model. And therefore it needs to get included to view model manually. To do this, you will have to decompile your desired arms model, and then include it by adding an additional $model key for it inside the QC.
 
-6. This step is **ONLY** required for games that has client-predicted weapon switching. (CS:GO/L4D(2)/Portal 2(???))
+6. This step is **ONLY** required for games that has client-predicted weapon switching. (CS:GO)
     Since weapon switching is client-predicted, it's not possibl
 
     *If you followed the last step correctly, the result should look something like this:*
