@@ -9,6 +9,7 @@ Changing the view model is not intended to be possible server-side, and therefor
  * **Counter-Strike: Source**
  * **Counter-Strike: Global Offensive** - *Arm model also needs to be included in custom view model*
  * **Day of Defeat: Source**
+ * **Half-Life 2: Deathmatch** - *Untested, but is expected to work*
  * **Team-Fortress 2** - Not recommended, see [Custom Weapons](https://forums.alliedmods.net/showthread.php?p=2105924) plugin instead.
 
 ## Requirements
@@ -35,6 +36,7 @@ Inside the config you should find a key named "ViewModelConfig". Inside this key
  * [Counter-Strike: Source](#list-of-weapons---css)
  * [Counter-Strike: Global Offensive](#list-of-weapons---csgo)
  * [Day of Defeat: Source](#list-of-weapons---dods)
+ * [Half-Life 2: Deathmatch](#list-of-weapons---hl2dm)
  * [Team-Fortress 2](#list-of-weapons---tf2)
 
 ## How to use the API
@@ -286,6 +288,23 @@ Smoke grenade GER | weapon_smoke_ger
 Smoke grenade US | weapon_smoke_us
 Riflegren US | weapon_riflegren_us
 Riflegren GER | weapon_riflegren_ger
+
+## List of weapons - HL2:DM
+*Some weapons may be missing or invalid*
+
+Name | Class-Name
+--- | ---
+Crowbar | weapon_crowbar
+Pistol | weapon_pistol
+SMG1 | weapon_smg1
+.357 Magnum | weapon_357
+Gravity gun | weapon_physcannon
+Shotgun | weapon_shotgun
+AR2 | weapon_ar2
+RPG | weapon_rpg
+Frag grenade | weapon_frag
+Crossbow | weapon_crossbow
+Bugbait | weapon_bugbait 
 
 ## List of weapons - TF2
 *Some weapons may be missing or invalid*
