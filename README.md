@@ -7,9 +7,9 @@ Changing the view model is not intended to be possible server-side, and therefor
 
 ## List of compatible games
  * **Counter-Strike: Source**
- * **Counter-Strike: Global Offensive** - *Arm model needs to be included*
+ * **Counter-Strike: Global Offensive** - *Arm model also needs to be included in custom view model*
  * **Day of Defeat: Source**
- * **Team-Fortress 2** - *Arm model and animations needs to be included*
+ * **Team-Fortress 2** - Not recommended, see [Custom Weapons](https://forums.alliedmods.net/showthread.php?p=2105924) plugin instead.
 
 ## Requirements
  * SourceMod 1.5 or higher
