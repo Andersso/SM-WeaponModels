@@ -32,6 +32,16 @@ Inside the config you should find a key named "ViewModelConfig". Inside this key
 ```
 *Note that you can just leave out any of the keys you wish not to use*
 
+Here is an example
+```
+"weapon_knife"
+{
+	"ViewModel" "models/weapons/v_my_custom_knife.mdl"
+	"WorldModel" "models/weapons/w_my_custom_knife.mdl"
+
+	"BlockLAW" "1" 
+}
+```
 ###List of weapons, class-names and item definition indexes
  * [Counter-Strike: Source](#list-of-weapons---css)
  * [Counter-Strike: Global Offensive](#list-of-weapons---csgo)
