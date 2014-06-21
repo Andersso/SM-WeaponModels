@@ -37,6 +37,82 @@ Inside the config you should find a key named "ViewModelConfig". Inside this key
  * [Day of Defeat: Source](#list-of-weapons---dods)
  * [Team-Fortress 2](#list-of-weapons---tf2)
 
+## How to use the API
+
+The API consists of these natives:
+```PAWN
+/**
+ * @brief Adds a weapon model
+ *
+ * @param		className		Class name of the weapon to add.
+ * @param		viewModel		Model path of the view model, or NULL_STRING for no change.
+ * @param		worldModel		Model path of the world model, or NULL_STRING for no change.
+ * @param		function		Function to call when weapon is selected.
+ * @return						The custom weapon model index, -1 on failure.
+ * @error						Maximum amount of custom weapons has been reached.
+ */
+native WeaponModels_AddWeaponByClassName(const String:className[], const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
+
+/**
+ * @brief Adds a weapon model
+ *
+ * @param		itemDefIndex	item definition index of the weapon to add.
+ * @param		viewModel		Model path of the view model, or NULL_STRING for no change.
+ * @param		worldModel		Model path of the world model, or NULL_STRING for no change.
+ * @param		function		Function to call when weapon is selected.
+ * @return						The custom weapon model index, -1 on failure.
+ * @error						Maximum amount of custom weapons has been reached.
+ */
+native WeaponModels_AddWeaponByItemDefIndex(itemDefIndex, const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
+
+/**
+ * @brief Removes a weapon model
+ *
+ * @param		weaponIndex		The weapon index returned from WeaponModels_AddWeaponBy...()
+ * @noreturn
+ * @error						Weapon index is invalid
+ */
+native WeaponModels_RemoveWeaponModel(weaponIndex);
+```
+
+Here is an example
+```PAWN
+#pragma semicolon 1
+#include <sourcemod>
+
+// Don't forget the weaponmodels include!
+#include <weaponmodels>
+
+public OnMapStart()
+{
+	WeaponModels_AddWeaponByClassName("weapon_knife", "models/weapons/v_my_custom_knife.mdl", NULL_STRING, WeaponModels_OnWeapon);
+	
+	// The item def index of the M4A1-S in CS:GO is 60
+	WeaponModels_AddWeaponByItemDefIndex(60, "models/weapons/v_my_custom_m4a1s.mdl", "models/weapons/w_my_custom_m4a1s.mdl", WeaponModels_OnWeapon);
+}
+
+// Don't forget you can both share or have individual callbacks for weapons. In this case we share the callback
+public bool:WeaponModels_OnWeapon(weaponIndex, client, weapon, const String:className[], itemDefIndex)
+{
+	new AdminId:adminId = GetUserAdmin(client);
+
+	// Player has an invalid admin id, don't show weapon
+	if (adminId == INVALID_ADMIN_ID)
+	{
+		return false;
+	}
+
+	// Player is missing the specified admin flags, don't show weapon
+	if (!(GetAdminFlags(adminId) & ADMFLAG_KICK|ADMFLAG_SLAY))
+	{
+		return false;
+	}
+
+	// All conditions have passed, show the weapon!
+	return true;
+}
+```
+
 ## How to create a custom view model
 In order to create a functional custom model, a few changes need to be made
 to your view model. Here is the list of things of what you will have to do.
