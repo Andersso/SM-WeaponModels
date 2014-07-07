@@ -53,7 +53,7 @@ Here is an example
 
 The API consists of these natives:
 ```PAWN
-native eaponModels_AddWeaponByClassName(const String:className[], const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
+native WeaponModels_AddWeaponByClassName(const String:className[], const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
 native WeaponModels_AddWeaponByItemDefIndex(itemDefIndex, const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
 native WeaponModels_RemoveWeaponModel(weaponIndex);
 ```
