@@ -142,7 +142,7 @@ to your view model. Here is the list of things of what you will have to do.
         { event 5001 0 "1" }
     }
     ```
-    *Copied sequence:*
+    ##### *Copied sequence:*
     ```
     $sequence _draw "draw" snap rotate -90 fps 32.00 {
         { event 5004 0 "Weapon_Colt.Draw" }
@@ -155,7 +155,7 @@ to your view model. Here is the list of things of what you will have to do.
         { event 5001 0 "1" }
     }
     ```
-    *Copied sequence:*
+    ##### *Copied sequence:*
     ```
     $sequence _draw "draw" snap rotate -90 fps 32.00 {
         { event 5001 0 "1" }
