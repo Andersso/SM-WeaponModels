@@ -3,7 +3,7 @@ Weapon Models plugin for SourceMod
 
 This is a SourceMod plugin which allows you to change both world and view model of any weapon server-side. The plugin provides both a config file and a simple but powerful [API](#how-to-use-the-api) for adding custom weapon models.
 
-Changing the view model is not intended to be possible server-side, and therefore a bunch of dirty hacks needs to be done in order for this to be achieved. See [Requirements](#requirements) to make sure your model is compatible.
+Changing the view model is not intended to be possible server-side, and therefore a bunch of dirty hacks needs to be done in order for this to be achieved. See [Requirements](#requirements)
 
 ## List of compatible games
  * **Counter-Strike: Source**
