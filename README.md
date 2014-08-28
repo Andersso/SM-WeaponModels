@@ -3,7 +3,7 @@ Weapon Models plugin for SourceMod
 
 This is a SourceMod plugin which allows you to change both world and view model of any weapon server-side. The plugin provides both a config file and a simple but powerful [API](#how-to-use-the-api) for adding custom weapon models.
 
-Changing the view model is not intended to be possible server-side, and therefore a bunch of dirty hacks needs to be done in order for this to be achieved. See [Model requirements](#model-requirements) to make sure your model is compatible.
+Changing the view model is not intended to be possible server-side, and therefore a bunch of dirty hacks needs to be done in order for this to be achieved. See [Requirements](#requirements) to make sure your model is compatible.
 
 ## List of compatible games
  * **Counter-Strike: Source**
@@ -13,8 +13,11 @@ Changing the view model is not intended to be possible server-side, and therefor
  * **Team-Fortress 2** - *Not recommended, see [Custom Weapons](https://forums.alliedmods.net/showthread.php?p=2105924) plugin instead.*
 
 ## Requirements
- * SourceMod 1.5 or higher
- * A custom view model - see [How to create a custom view model](#how-to-create-a-custom-view-model)
+ * SourceMod 1.6 or higher
+ * A view model should work optimally if these requirements are met:
+  - Matching activities used by the original model
+  - More than one fire animation
+  - Contains an arm-model (CS:GO)
 
 ##Adding a custom model in config
 The config file is located in the SourceMod config directory and is named weaponmodels_config.cfg
@@ -96,12 +99,6 @@ public bool:WeaponModels_OnWeapon(weaponIndex, client, weapon, const String:clas
 	return true;
 }
 ```
-
-## Model requirements
-A view model should work optimally if these requirements are met:
- * Matching activities used by the original model
- * More than one fire animation
- * Contains an arm-model (CS:GO)
 
 ## List of weapons - CS:S
 *Some weapons may be missing or invalid*
