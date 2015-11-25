@@ -13,7 +13,7 @@ Changing the view model is not intended to be possible server-side, and therefor
  * **Team-Fortress 2** - *Not recommended, see [Custom Weapons](https://forums.alliedmods.net/showthread.php?p=2105924) plugin instead.*
 
 ## Requirements
- * SourceMod 1.6 or higher
+ * SourceMod 1.7 or higher
  * A view model should work optimally if these requirements are met:
   - Matching activities used by the original model
   - More than one fire animation
