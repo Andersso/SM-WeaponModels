@@ -47,6 +47,9 @@
 #include <sdktools>
 #include <sdkhooks>
 
+// This should be on top, sm includes still not updated as of today
+#pragma newdecls required
+
 // Change this if you need more custom weapon models
 #define MAX_CUSTOM_WEAPONS 50
 
@@ -60,10 +63,12 @@
 
 #define PATTACH_WORLDORIGIN 5
 
-#define PLUGIN_NAME "Custom Weapon Models"
-#define PLUGIN_VERSION "1.0"
+#define SWAP_SEQ_PAIRED (1 << 31)
 
-public Plugin:myinfo =
+#define PLUGIN_NAME "Custom Weapon Models"
+#define PLUGIN_VERSION "1.1"
+
+Plugin myinfo =
 {
 	name        = PLUGIN_NAME,
 	author      = "Andersso",
@@ -73,34 +78,34 @@ public Plugin:myinfo =
 };
 
 // This value should be true on the later versions of Source which uses client-predicted weapon switching
-new bool:g_bPredictedWeaponSwitch;
+bool g_bPredictedWeaponSwitch;
 
-new EngineVersion:g_iEngineVersion;
+EngineVersion g_iEngineVersion;
 
-new String:g_szViewModelClassName[CLASS_NAME_MAX_LENGTH] = "predicted_viewmodel";
-new String:g_szWeaponPrefix[CLASS_NAME_MAX_LENGTH] = "weapon_";
+char g_szViewModelClassName[CLASS_NAME_MAX_LENGTH] = "predicted_viewmodel";
+char g_szWeaponPrefix[CLASS_NAME_MAX_LENGTH] = "weapon_";
 
-new Handle:g_hSDKCall_UpdateTransmitState; // UpdateTransmitState will stop the view model from transmitting if EF_NODRAW flag is present
-new Handle:g_hSDKCall_GetSequenceActivity;
+Handle g_hSDKCall_UpdateTransmitState; // UpdateTransmitState will stop the view model from transmitting if EF_NODRAW flag is present
+Handle g_hSDKCall_GetSequenceActivity;
 
-new g_iOffset_StudioHdr;
-new g_iOffset_SequenceCount;
+int g_iOffset_StudioHdr;
+int g_iOffset_SequenceCount;
 
-new g_iOffset_Effects;
-new g_iOffset_ModelIndex;
+int g_iOffset_Effects;
+int g_iOffset_ModelIndex;
 
-new g_iOffset_WorldModelIndex;
+int g_iOffset_WorldModelIndex;
 
-new g_iOffset_ViewModel;
-new g_iOffset_ActiveWeapon;
+int g_iOffset_ViewModel;
+int g_iOffset_ActiveWeapon;
 
-new g_iOffset_Owner;
-new g_iOffset_Weapon;
-new g_iOffset_Sequence;
-new g_iOffset_PlaybackRate;
-new g_iOffset_ViewModelIndex;
+int g_iOffset_Owner;
+int g_iOffset_Weapon;
+int g_iOffset_Sequence;
+int g_iOffset_PlaybackRate;
+int g_iOffset_ViewModelIndex;
 
-new g_iOffset_ItemDefinitionIndex;
+int g_iOffset_ItemDefinitionIndex;
 
 enum ClientInfo
 {
@@ -114,7 +119,7 @@ enum ClientInfo
 	Float:ClientInfo_UpdateTransmitStateTime
 };
 
-new g_ClientInfo[MAXPLAYERS + 1][ClientInfo];
+int g_ClientInfo[MAXPLAYERS + 1][ClientInfo];
 
 enum WeaponModelInfoStatus
 {
@@ -130,7 +135,7 @@ enum WeaponModelInfo
 	WeaponModelInfo_SwapSequences[MAX_SWAP_SEQEUENCES],
 	WeaponModelInfo_NumAnims,
 	Handle:WeaponModelInfo_Forward,
-	String:WeaponModelInfo_ClassName[CLASS_NAME_MAX_LENGTH],
+	String:WeaponModelInfo_ClassName[CLASS_NAME_MAX_LENGTH + 1],
 	String:WeaponModelInfo_ViewModel[PLATFORM_MAX_PATH + 1],
 	String:WeaponModelInfo_WorldModel[PLATFORM_MAX_PATH + 1],
 	WeaponModelInfo_ViewModelIndex,
@@ -140,19 +145,20 @@ enum WeaponModelInfo
 	WeaponModelInfoStatus:WeaponModelInfo_Status
 };
 
-new g_WeaponModelInfo[MAX_CUSTOM_WEAPONS][WeaponModelInfo];
+int g_WeaponModelInfo[MAX_CUSTOM_WEAPONS][WeaponModelInfo];
 
-public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
 	RegPluginLibrary("weaponmodels");
 
+	// This should only be called in AskPluginLoad()
 	CreateNative("WeaponModels_AddWeaponByClassName", Native_AddWeaponByClassName);
 	CreateNative("WeaponModels_AddWeaponByItemDefIndex", Native_AddWeaponByItemDefIndex);
 	CreateNative("WeaponModels_RemoveWeaponModel", Native_RemoveWeaponModel);
 
 	if (late)
 	{
-		for (new i = 1; i <= MaxClients; i++)
+		for (int i = 1; i <= MaxClients; i++)
 		{
 			if (IsClientInGame(i))
 			{
@@ -160,16 +166,18 @@ public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
 			}
 		}
 	}
+	
+	return APLRes_Success;
 }
 
-public Native_AddWeaponByClassName(Handle:plugin, numParams)
+public int Native_AddWeaponByClassName(Handle plugin, int numParams)
 {
-	decl String:className[CLASS_NAME_MAX_LENGTH];
+	char className[CLASS_NAME_MAX_LENGTH];
 	GetNativeString(1, className, sizeof(className));
 
-	new weaponIndex = -1;
+	int weaponIndex = -1;
 
-	for (new i; i < MAX_CUSTOM_WEAPONS; i++)
+	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		// Check if class-name is already used
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] != WeaponModelInfoStatus_Free && StrEqual(g_WeaponModelInfo[i][WeaponModelInfo_ClassName], className, false))
@@ -191,7 +199,8 @@ public Native_AddWeaponByClassName(Handle:plugin, numParams)
 		return -1;
 	}
 
-	decl String:viewModel[PLATFORM_MAX_PATH + 1], String:worldModel[PLATFORM_MAX_PATH + 1];
+	char viewModel[PLATFORM_MAX_PATH + 1];
+	char worldModel[PLATFORM_MAX_PATH + 1];
 	GetNativeString(2, viewModel, sizeof(viewModel));
 	GetNativeString(3, worldModel, sizeof(worldModel));
 
@@ -199,23 +208,23 @@ public Native_AddWeaponByClassName(Handle:plugin, numParams)
 
 	strcopy(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ClassName], CLASS_NAME_MAX_LENGTH, className);
 
-	AddWeapon(weaponIndex, viewModel, worldModel, plugin, Function:GetNativeCell(4));
+	AddWeapon(weaponIndex, viewModel, worldModel, plugin, GetNativeCell(4));
 
 	return weaponIndex;
 }
 
-public Native_AddWeaponByItemDefIndex(Handle:plugin, numParams)
+public int Native_AddWeaponByItemDefIndex(Handle plugin, int numParams)
 {
-	new itemDefIndex = GetNativeCell(1);
+	int itemDefIndex = GetNativeCell(1);
 
 	if (itemDefIndex < 0)
 	{
 		ThrowNativeError(SP_ERROR_INDEX, "Item definition index was invalid");
 	}
 
-	new weaponIndex = -1;
+	int weaponIndex = -1;
 
-	for (new i; i < MAX_CUSTOM_WEAPONS; i++)
+	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		// Check if definition index is already used
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] != WeaponModelInfoStatus_Free && g_WeaponModelInfo[i][WeaponModelInfo_DefIndex] == itemDefIndex)
@@ -239,23 +248,23 @@ public Native_AddWeaponByItemDefIndex(Handle:plugin, numParams)
 
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_DefIndex] = itemDefIndex;
 
-	decl String:viewModel[PLATFORM_MAX_PATH + 1], String:worldModel[PLATFORM_MAX_PATH + 1];
-
+	char viewModel[PLATFORM_MAX_PATH + 1];
+	char worldModel[PLATFORM_MAX_PATH + 1];
 	GetNativeString(2, viewModel, sizeof(viewModel));
 	GetNativeString(3, worldModel, sizeof(worldModel));
 
-	AddWeapon(weaponIndex, viewModel, worldModel, plugin, Function:GetNativeCell(4));
+	AddWeapon(weaponIndex, viewModel, worldModel, plugin, GetNativeCell(4));
 
 	return weaponIndex;
 }
 
-bool:CheckForwardCleanup(weaponIndex)
+bool CheckForwardCleanup(int weaponIndex)
 {
-	new Handle:forwardHandle = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward];
+	Handle forwardHandle = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward];
 
-	if (forwardHandle)
+	if (forwardHandle != INVALID_HANDLE)
 	{
-		CloseHandle(forwardHandle);
+		forwardHandle.Close();
 
 		return true;
 	}
@@ -263,9 +272,9 @@ bool:CheckForwardCleanup(weaponIndex)
 	return false;
 }
 
-GetFreeWeaponInfoIndex()
+int GetFreeWeaponInfoIndex()
 {
-	for (new i; i < MAX_CUSTOM_WEAPONS; i++)
+	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_Free)
 		{
@@ -276,11 +285,11 @@ GetFreeWeaponInfoIndex()
 	return -1;
 }
 
-AddWeapon(weaponIndex, const String:viewModel[], const String:worldModel[], Handle:plugin, Function:function)
+void AddWeapon(int weaponIndex, const char[] viewModel, const char[] worldModel, Handle plugin, Function _function) // <- SP-Compiler error
 {
-	new Handle:forwardHandle = CreateForward(ET_Single, Param_Cell, Param_Cell, Param_Cell, Param_String, Param_Cell);
+	Handle forwardHandle = CreateForward(ET_Single, Param_Cell, Param_Cell, Param_Cell, Param_String, Param_Cell);
 
-	AddToForward(forwardHandle, plugin, function);
+	AddToForward(forwardHandle, plugin, _function);
 
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_NumAnims] = -1;
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward] = forwardHandle;
@@ -293,36 +302,36 @@ AddWeapon(weaponIndex, const String:viewModel[], const String:worldModel[], Hand
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Status] = WeaponModelInfoStatus_API;
 }
 
-PrecacheWeaponInfo(weaponIndex)
+void PrecacheWeaponInfo(int weaponIndex)
 {
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex] = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModelIndex] = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModel]);
 }
 
-PrecacheWeaponInfo_PrecahceModel(const String:model[])
+int PrecacheWeaponInfo_PrecahceModel(const char[] model)
 {
 	return model[0] != '\0' ? PrecacheModel(model, true) : 0;
 }
 
-public Native_RemoveWeaponModel(Handle:plugin, numParams)
+public int Native_RemoveWeaponModel(Handle plugin, int numParams)
 {
-	new weaponIndex = GetNativeCell(1);
+	int weaponIndex = GetNativeCell(1);
 
 	if (weaponIndex < 0 || weaponIndex >= MAX_CUSTOM_WEAPONS)
 	{
 		ThrowNativeError(SP_ERROR_INDEX, "Weapon index was invalid");
 	}
 
-	CloseHandle(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward]);
+	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward].Close();
 
 	CleanUpSwapWeapon(weaponIndex);
 
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Status] = WeaponModelInfoStatus_Free;
 }
 
-CleanUpSwapWeapon(weaponIndex)
+void CleanUpSwapWeapon(int weaponIndex)
 {
-	new swapWeapon = EntRefToEntIndex(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
+	int swapWeapon = EntRefToEntIndex(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
 
 	if (swapWeapon > 0)
 	{
@@ -330,7 +339,7 @@ CleanUpSwapWeapon(weaponIndex)
 	}
 }
 
-public OnPluginStart()
+public void OnPluginStart()
 {
 	CreateConVar("sm_weaponmodels_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
@@ -364,7 +373,7 @@ public OnPluginStart()
 
 	HookEvent("player_death", Event_PlayerDeath);
 
-	new Handle:gameConf = LoadGameConfigFile("plugin.weaponmodels");
+	Handle gameConf = LoadGameConfigFile("plugin.weaponmodels");
 
 	if (gameConf)
 	{
@@ -413,14 +422,14 @@ public OnPluginStart()
 
 	InitSendPropOffset(g_iOffset_ItemDefinitionIndex, "CEconEntity", "m_iItemDefinitionIndex", false);
 
-	new lightingOriginOffset;
+	int lightingOriginOffset;
 	InitSendPropOffset(lightingOriginOffset, "CBaseAnimating", "m_hLightingOrigin");
 
 	// StudioHdr offset in gameconf is only relative to the offset of m_hLightingOrigin, in order to make the offset more resilient to game updates
 	g_iOffset_StudioHdr += lightingOriginOffset;
 }
 
-InitGameConfOffset(Handle:gameConf, &offsetDest, const String:keyName[])
+void InitGameConfOffset(Handle gameConf, int &offsetDest, const char[] keyName)
 {
 	if ((offsetDest = GameConfGetOffset(gameConf, keyName)) == -1)
 	{
@@ -428,7 +437,7 @@ InitGameConfOffset(Handle:gameConf, &offsetDest, const String:keyName[])
 	}
 }
 
-InitSendPropOffset(&offsetDest, const String:serverClass[], const String:propName[], bool:failOnError = true)
+void InitSendPropOffset(int &offsetDest, const char[] serverClass, const char[] propName, bool failOnError = true)
 {
 	if ((offsetDest = FindSendPropInfo(serverClass, propName)) < 1 && failOnError)
 	{
@@ -436,16 +445,16 @@ InitSendPropOffset(&offsetDest, const String:serverClass[], const String:propNam
 	}
 }
 
-public Action:Command_ReloadConfig(client, numArgs)
+public Action Command_ReloadConfig(int client, int numArgs)
 {
 	LoadConfig();
 }
 
-public Action:Command_LookAtWeapon(client, const String:command[], numArgs)
+public Action Command_LookAtWeapon(int client, const char[] command, int numArgs)
 {
 	if (g_ClientInfo[client][ClientInfo_CustomWeapon])
 	{
-		new weaponIndex = g_ClientInfo[client][ClientInfo_WeaponIndex];
+		int weaponIndex = g_ClientInfo[client][ClientInfo_WeaponIndex];
 
 		if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_BlockLAW])
 		{
@@ -456,10 +465,10 @@ public Action:Command_LookAtWeapon(client, const String:command[], numArgs)
 	return Plugin_Continue;
 }
 
-public Event_HostageFollows(Handle:event, const String:eventName[], bool:dontBrodcast)
+public void Event_HostageFollows(Handle event, const char[] eventName, bool dontBrodcast)
 {
-	new userID = GetEventInt(event, "userid");
-	new client = GetClientOfUserId(userID);
+	int userID = GetEventInt(event, "userid");
+	int client = GetClientOfUserId(userID);
 
 	// Prevent the view model from being removed
 	SetViewModel(client, 1, -1);
@@ -467,7 +476,7 @@ public Event_HostageFollows(Handle:event, const String:eventName[], bool:dontBro
 	RequestFrame(RefreshViewModel, userID);
 }
 
-public RefreshViewModel(any:client)
+public void RefreshViewModel(any client)
 {
 	if (!(client = GetClientOfUserId(client)))
 	{
@@ -476,7 +485,7 @@ public RefreshViewModel(any:client)
 
 	if (g_ClientInfo[client][ClientInfo_CustomWeapon])
 	{
-		new viewModel2 = GetViewModel(client, 1);
+		int viewModel2 = GetViewModel(client, 1);
 
 		// Remove the view model created by the game
 		if (viewModel2 != -1)
@@ -488,29 +497,33 @@ public RefreshViewModel(any:client)
 	}
 }
 
-public Event_WeaponFire(Handle:event, const String:name[], bool:dontBrodcast)
+public void Event_WeaponFire(Handle event, const char[] name, bool dontBrodcast)
 {
-	static Float:heatValue[MAXPLAYERS + 1], Float:lastSmoke[MAXPLAYERS + 1];
+	static float heatValue[MAXPLAYERS + 1];
+	
+	float lastSmoke[MAXPLAYERS + 1];
 
-	new client = GetClientOfUserId(GetEventInt(event, "userid")), Float:gameTime = GetGameTime();
+	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	float gameTime = GetGameTime();
 
 	if (g_ClientInfo[client][ClientInfo_CustomWeapon])
 	{
-		new viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+		int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
 
 		if (viewModel2 == -1)
 		{
 			return;
 		}
 
-		static primaryAmmoTypeOffset, lastShotTimeOffset;
+		static int primaryAmmoTypeOffset;
+		static int lastShotTimeOffset;
 
 		if (!primaryAmmoTypeOffset)
 		{
 			InitSendPropOffset(primaryAmmoTypeOffset, "CBaseCombatWeapon", "m_iPrimaryAmmoType");
 		}
 
-		new activeWeapon = GetEntDataEnt2(client, g_iOffset_ActiveWeapon);
+		int activeWeapon = GetEntDataEnt2(client, g_iOffset_ActiveWeapon);
 
 		// Weapons without any type of ammo will not use smoke effects
 		if (GetEntData(activeWeapon, primaryAmmoTypeOffset) == -1)
@@ -523,7 +536,7 @@ public Event_WeaponFire(Handle:event, const String:name[], bool:dontBrodcast)
 			InitSendPropOffset(lastShotTimeOffset, "CWeaponCSBase", "m_fLastShotTime");
 		}
 
-		new Float:newHeat = ((gameTime - GetEntDataFloat(activeWeapon, lastShotTimeOffset)) * -0.5) + heatValue[client];
+		float newHeat = ((gameTime - GetEntDataFloat(activeWeapon, lastShotTimeOffset)) * -0.5) + heatValue[client];
 
 		if (newHeat <= 0.0)
 		{
@@ -549,9 +562,10 @@ public Event_WeaponFire(Handle:event, const String:name[], bool:dontBrodcast)
 	}
 }
 
-ShowMuzzleSmoke(client, entity)
+void ShowMuzzleSmoke(int client, int entity)
 {
-	static muzzleSmokeIndex = INVALID_STRING_INDEX, effectIndex = INVALID_STRING_INDEX;
+	static int muzzleSmokeIndex = INVALID_STRING_INDEX;
+	static int effectIndex = INVALID_STRING_INDEX;
 
 	if (muzzleSmokeIndex == INVALID_STRING_INDEX && (muzzleSmokeIndex = GetStringTableItemIndex("ParticleEffectNames", "weapon_muzzle_smoke")) == INVALID_STRING_INDEX)
 	{
@@ -575,9 +589,9 @@ ShowMuzzleSmoke(client, entity)
 	TE_SendToClient(client);
 }
 
-StopParticleEffects(client, entity)
+void StopParticleEffects(int client, int entity)
 {
-	static effectIndex = INVALID_STRING_INDEX;
+	static int effectIndex = INVALID_STRING_INDEX;
 
 	if (effectIndex == INVALID_STRING_INDEX && (effectIndex = GetStringTableItemIndex("EffectDispatch", "ParticleEffectStop")) == INVALID_STRING_INDEX)
 	{
@@ -592,9 +606,9 @@ StopParticleEffects(client, entity)
 	TE_SendToClient(client);
 }
 
-GetStringTableItemIndex(const String:stringTable[], const String:string[])
+int GetStringTableItemIndex(const char[] stringTable, const char[] string)
 {
-	new tableIndex = FindStringTable(stringTable);
+	int tableIndex = FindStringTable(stringTable);
 
 	if (tableIndex == INVALID_STRING_TABLE)
 	{
@@ -603,7 +617,7 @@ GetStringTableItemIndex(const String:stringTable[], const String:string[])
 		return INVALID_STRING_INDEX;
 	}
 
-	new index = FindStringIndex(tableIndex, string);
+	int index = FindStringIndex(tableIndex, string);
 
 	if (index == INVALID_STRING_TABLE)
 	{
@@ -613,9 +627,9 @@ GetStringTableItemIndex(const String:stringTable[], const String:string[])
 	return index;
 }
 
-public Event_PlayerDeath(Handle:event, const String:eventName[], bool:dontBrodcast)
+public void Event_PlayerDeath(Handle event, const char[] eventName, bool dontBrodcast)
 {
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+	int client = GetClientOfUserId(GetEventInt(event, "userid"));
 
 	// Event is sometimes called with client index 0 in Left 4 Dead
 	if (!client)
@@ -629,7 +643,7 @@ public Event_PlayerDeath(Handle:event, const String:eventName[], bool:dontBrodca
 		return;
 	}
 
-	new viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
 
 	if (viewModel2 != -1)
 	{
@@ -642,14 +656,14 @@ public Event_PlayerDeath(Handle:event, const String:eventName[], bool:dontBrodca
 }
 
 //TODO: restore weapon model name
-public OnPluginEnd()
+public void OnPluginEnd()
 {
-	for (new i = 1; i <= MaxClients; i++)
+	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (IsClientInGame(i) && g_ClientInfo[i][ClientInfo_CustomWeapon])
 		{
-			new viewModel1 = EntRefToEntIndex(g_ClientInfo[i][ClientInfo_ViewModels][0]);
-			new viewModel2 = EntRefToEntIndex(g_ClientInfo[i][ClientInfo_ViewModels][1]);
+			int viewModel1 = EntRefToEntIndex(g_ClientInfo[i][ClientInfo_ViewModels][0]);
+			int viewModel2 = EntRefToEntIndex(g_ClientInfo[i][ClientInfo_ViewModels][1]);
 
 			if (viewModel1 != -1)
 			{
@@ -665,7 +679,7 @@ public OnPluginEnd()
 		}
 	}
 
-	for (new i; i < MAX_CUSTOM_WEAPONS; i++)
+	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] != WeaponModelInfoStatus_Free)
 		{
@@ -676,10 +690,10 @@ public OnPluginEnd()
 	LoadConfig();
 }
 
-public OnConfigsExecuted()
+public void OnConfigsExecuted()
 {
 	// In case of map-change
-	for (new i; i < MAX_CUSTOM_WEAPONS; i++)
+	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_API)
 		{
@@ -690,27 +704,28 @@ public OnConfigsExecuted()
 	LoadConfig();
 }
 
-LoadConfig()
+void LoadConfig()
 {
-	decl String:path[PLATFORM_MAX_PATH + 1], String:buffer[PLATFORM_MAX_PATH + 1];
+	char path[PLATFORM_MAX_PATH + 1];
+	char buffer[PLATFORM_MAX_PATH + 1];
 
 	BuildPath(Path_SM, path, sizeof(path), "configs/weaponmodels_config.cfg");
 
 	if (FileExists(path))
 	{
-		new Handle:kv = CreateKeyValues("ViewModelConfig");
+		Handle kv = CreateKeyValues("ViewModelConfig");
 
 		FileToKeyValues(kv, path);
 
 		if (KvGotoFirstSubKey(kv))
 		{
-			new nextIndex = 0;
+			int nextIndex = 0;
 
 			do
 			{
-				new weaponIndex = -1;
+				int weaponIndex = -1;
 
-				for (new i = nextIndex; i < MAX_CUSTOM_WEAPONS; i++)
+				for (int i = nextIndex; i < MAX_CUSTOM_WEAPONS; i++)
 				{
 					// Select indexes of status free or config
 					if (g_WeaponModelInfo[i][WeaponModelInfo_Status] < WeaponModelInfoStatus_API)
@@ -730,7 +745,7 @@ LoadConfig()
 
 				KvGetSectionName(kv, buffer, sizeof(buffer));
 
-				new defIndex;
+				int defIndex;
 
 				// Check if string is numeral
 				if (StringToIntEx(buffer, defIndex) != strlen(buffer))
@@ -776,7 +791,7 @@ LoadConfig()
 
 	BuildPath(Path_SM, path, sizeof(path), "configs/weaponmodels_downloadlist.cfg");
 
-	new Handle:file = OpenFile(path, "r");
+	Handle file = OpenFile(path, "r");
 
 	if (file)
 	{
@@ -808,7 +823,7 @@ LoadConfig()
 	}
 }
 
-public OnClientPostAdminCheck(client)
+public void OnClientPostAdminCheck(int client)
 {
 	g_ClientInfo[client][ClientInfo_ViewModels] = { -1, -1 };
 	g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
@@ -819,7 +834,7 @@ public OnClientPostAdminCheck(client)
 	SDKHook(client, SDKHook_PostThinkPost, OnClientPostThinkPost);
 }
 
-public OnClientSpawnPost(client)
+public void OnClientSpawnPost(int client)
 {
 	// No spectators
 	if (GetClientTeam(client) < 2)
@@ -829,8 +844,8 @@ public OnClientSpawnPost(client)
 
 	g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
 
-	new viewModel1 = GetViewModel(client, 0);
-	new viewModel2 = GetViewModel(client, 1);
+	int viewModel1 = GetViewModel(client, 0);
+	int viewModel2 = GetViewModel(client, 1);
 
 	// If a secondary view model doesn't exist, create one
 	if (viewModel2 == -1)
@@ -856,46 +871,46 @@ public OnClientSpawnPost(client)
 	// Hide the secondary view model, in case the player has respawned
 	ShowViewModel(viewModel2, false);
 
-	new activeWeapon = GetEntDataEnt2(client, g_iOffset_ActiveWeapon);
+	int activeWeapon = GetEntDataEnt2(client, g_iOffset_ActiveWeapon);
 
 	OnWeaponSwitch(client, activeWeapon);
 	OnWeaponSwitchPost(client, activeWeapon);
 }
 
-GetViewModel(client, index)
+int GetViewModel(int client, int index)
 {
 	return GetEntDataEnt2(client, g_iOffset_ViewModel + index * 4);
 }
 
-SetViewModel(client, index, viewModel)
+void SetViewModel(int client, int index, int viewModel)
 {
 	SetEntDataEnt2(client, g_iOffset_ViewModel + index * 4, viewModel);
 }
 
-ShowViewModel(viewModel, bool:show)
+void ShowViewModel(int viewModel, bool show)
 {
-	new flags = GetEntData(viewModel, g_iOffset_Effects);
+	int flags = GetEntData(viewModel, g_iOffset_Effects);
 
 	SetEntData(viewModel, g_iOffset_Effects, show ? flags & ~EF_NODRAW : flags | EF_NODRAW, _, true);
 }
 
-public Action:OnWeaponSwitch(client, weapon)
+public Action OnWeaponSwitch(int client, int weapon)
 {
-	new viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
-	new viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
 
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
 		return Plugin_Continue;
 	}
 
-	decl String:className[CLASS_NAME_MAX_LENGTH];
+	char className[CLASS_NAME_MAX_LENGTH];
 	if (!GetEdictClassname(weapon, className, sizeof(className)))
 	{
 		return Plugin_Continue;
 	}
 
-	for (new i; i < MAX_CUSTOM_WEAPONS; i++)
+	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		// Skip unused indexes
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_Free)
@@ -912,7 +927,7 @@ public Action:OnWeaponSwitch(client, weapon)
 				continue;
 			}
 
-			new itemDefIndex = GetEntData(weapon, g_iOffset_ItemDefinitionIndex);
+			int itemDefIndex = GetEntData(weapon, g_iOffset_ItemDefinitionIndex);
 
 			if (g_WeaponModelInfo[i][WeaponModelInfo_DefIndex] != itemDefIndex)
 			{
@@ -967,9 +982,9 @@ public Action:OnWeaponSwitch(client, weapon)
 	return Plugin_Continue;
 }
 
-CreateSwapWeapon(const String:className[], client)
+int CreateSwapWeapon(const char[] className, int client)
 {
-	new swapWeapon = CreateEntityByName(className);
+	int swapWeapon = CreateEntityByName(className);
 
 	if (swapWeapon == -1)
 	{
@@ -989,9 +1004,9 @@ CreateSwapWeapon(const String:className[], client)
 	return swapWeapon;
 }
 
-bool:ExecuteForward(weaponIndex, client, weapon, const String:className[], itemDefIndex=-1)
+bool ExecuteForward(int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex = -1)
 {
-	new Handle:forwardHandle = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward];
+	Handle forwardHandle = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward];
 
 	// Clean-up, if required
 	if (!GetForwardFunctionCount(forwardHandle))
@@ -1011,17 +1026,15 @@ bool:ExecuteForward(weaponIndex, client, weapon, const String:className[], itemD
 	Call_PushString(className);
 	Call_PushCell(itemDefIndex);
 
-	new bool:result;
+	bool result;
 	Call_Finish(result);
 
 	return result;
 }
 
-#define SWAP_SEQ_PAIRED (1 << 31)
-
-InitSwapSequenceArray(swapSequences[MAX_SWAP_SEQEUENCES], numAnims, weapon, index = 0)
+int InitSwapSequenceArray(int swapSequences[MAX_SWAP_SEQEUENCES], int numAnims, int weapon, int index = 0)
 {
-	new value = swapSequences[index], swapIndex = -1;
+	int value = swapSequences[index], swapIndex = -1;
 
 	if (!value)
 	{
@@ -1062,9 +1075,9 @@ InitSwapSequenceArray(swapSequences[MAX_SWAP_SEQEUENCES], numAnims, weapon, inde
 		return 0;
 	}
 
-	for (new i = index + 1; i < numAnims; i++)
+	for (int i = index + 1; i < numAnims; i++)
 	{
-		new nextValue = InitSwapSequenceArray(swapSequences, numAnims, weapon, i);
+		int nextValue = InitSwapSequenceArray(swapSequences, numAnims, weapon, i);
 
 		if (value == nextValue)
 		{
@@ -1082,7 +1095,7 @@ InitSwapSequenceArray(swapSequences[MAX_SWAP_SEQEUENCES], numAnims, weapon, inde
 	return value;
 }
 
-public OnWeaponSwitchPost(client, weapon)
+public void OnWeaponSwitchPost(int client, int weapon)
 {
 	// Callback is sometimes called on disconnected clients
 	if (!IsClientConnected(client))
@@ -1090,15 +1103,15 @@ public OnWeaponSwitchPost(client, weapon)
 		return;
 	}
 
-	new viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
-	new viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
 
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
 		return;
 	}
 
-	new weaponIndex = g_ClientInfo[client][ClientInfo_WeaponIndex];
+	int weaponIndex = g_ClientInfo[client][ClientInfo_WeaponIndex];
 
 	if (weapon != g_ClientInfo[client][ClientInfo_CustomWeapon])
 	{
@@ -1129,7 +1142,7 @@ public OnWeaponSwitchPost(client, weapon)
 
 		if (g_bPredictedWeaponSwitch)
 		{
-			new sequence = GetEntData(viewModel1, g_iOffset_Sequence);
+			int sequence = GetEntData(viewModel1, g_iOffset_Sequence);
 
 			g_ClientInfo[client][ClientInfo_DrawSequence] = sequence;
 
@@ -1152,18 +1165,18 @@ public OnWeaponSwitchPost(client, weapon)
 
 		if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_NumAnims] == -1)
 		{
-			new Address:pStudioHdr = Address:GetEntData(weapon, g_iOffset_StudioHdr);
+			Address pStudioHdr = view_as<Address>(GetEntData(weapon, g_iOffset_StudioHdr));
 
 			// Check if StudioHdr is valid
-			if (pStudioHdr >= Address_MinimumValid && (pStudioHdr = Address:LoadFromAddress(pStudioHdr, NumberType_Int32)) >= Address_MinimumValid)
+			if (pStudioHdr >= Address_MinimumValid && (pStudioHdr = view_as<Address>(LoadFromAddress(pStudioHdr, NumberType_Int32))) >= Address_MinimumValid)
 			{
-				new numAnims = LoadFromAddress(pStudioHdr + Address:g_iOffset_SequenceCount, NumberType_Int32), swapSequences[MAX_SWAP_SEQEUENCES];
+				int numAnims = LoadFromAddress(pStudioHdr + view_as<Address>(g_iOffset_SequenceCount), NumberType_Int32), swapSequences[MAX_SWAP_SEQEUENCES];
 
 				if (numAnims < MAX_SWAP_SEQEUENCES)
 				{
 					InitSwapSequenceArray(swapSequences, numAnims, weapon);
 					
-					for (new i; i < numAnims; i++)
+					for (int i = 0; i < numAnims; i++)
 					{
 						PrintToServer("%i", swapSequences[i]);
 					}
@@ -1178,7 +1191,7 @@ public OnWeaponSwitchPost(client, weapon)
 			}
 			else
 			{
-				for (new i; i < MAX_SWAP_SEQEUENCES; i++)
+				for (int i = 0; i < MAX_SWAP_SEQEUENCES; i++)
 				{
 					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences][i] = -1;
 				}
@@ -1206,9 +1219,9 @@ public OnWeaponSwitchPost(client, weapon)
 	}
 }
 
-ToggleViewModelWeapon(client, viewModel, weaponIndex)
+void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 {
-	new swapWeapon;
+	int swapWeapon;
 
 	if ((g_ClientInfo[client][ClientInfo_ToggleSequence] = !g_ClientInfo[client][ClientInfo_ToggleSequence]))
 	{
@@ -1229,7 +1242,7 @@ ToggleViewModelWeapon(client, viewModel, weaponIndex)
 	SetEntDataEnt2(viewModel, g_iOffset_Weapon, swapWeapon, true);
 }
 
-public OnClientPostThinkPost(client)
+public void OnClientPostThinkPost(int client)
 {
 	// Callback is sometimes called on disconnected clients
 	if (!IsClientConnected(client))
@@ -1242,25 +1255,25 @@ public OnClientPostThinkPost(client)
 		return;
 	}
 
-	new viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
-	new viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
 
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
 		return;
 	}
 
-	new sequence = GetEntData(viewModel1, g_iOffset_Sequence);
+	int sequence = GetEntData(viewModel1, g_iOffset_Sequence);
 
-	new bool:predictedDraw = false;
+	bool predictedDraw = false;
 
 	if (g_bPredictedWeaponSwitch)
 	{
-		new Float:updateTransmitStateTime = g_ClientInfo[client][ClientInfo_UpdateTransmitStateTime];
+		float updateTransmitStateTime = g_ClientInfo[client][ClientInfo_UpdateTransmitStateTime];
 
 		if (updateTransmitStateTime && GetGameTime() > updateTransmitStateTime)
 		{
-			PrintToServer("update");
+			//PrintToServer("update");
 			SDKCall(g_hSDKCall_UpdateTransmitState, viewModel1);
 
 			g_ClientInfo[client][ClientInfo_UpdateTransmitStateTime] = 0.0;
@@ -1273,14 +1286,14 @@ public OnClientPostThinkPost(client)
 		}
 	}
 
-	static newSequenceParityOffset;
+	static int newSequenceParityOffset = 0;
 
 	if (!newSequenceParityOffset)
 	{
 		InitDataMapOffset(newSequenceParityOffset, viewModel1, "m_nNewSequenceParity");
 	}
 
-	new sequenceParity = GetEntData(viewModel1, newSequenceParityOffset);
+	int sequenceParity = GetEntData(viewModel1, newSequenceParityOffset);
 
 	if (sequence == g_ClientInfo[client][ClientInfo_LastSequence])
 	{
@@ -1293,9 +1306,9 @@ public OnClientPostThinkPost(client)
 				return;
 			}
 
-			new weaponIndex = g_ClientInfo[client][ClientInfo_WeaponIndex];
+			int weaponIndex = g_ClientInfo[client][ClientInfo_WeaponIndex];
 
-			new swapSequence = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences][sequence];
+			int swapSequence = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences][sequence];
 
 			if (swapSequence != -1)
 			{
@@ -1315,7 +1328,7 @@ public OnClientPostThinkPost(client)
 	}
 	else
 	{
-		PrintToServer("seq %i", sequence);
+		//PrintToServer("seq %i", sequence);
 		SetEntData(viewModel2, g_iOffset_Sequence, sequence, _, true);
 
 		g_ClientInfo[client][ClientInfo_LastSequence] = sequence;
@@ -1324,8 +1337,7 @@ public OnClientPostThinkPost(client)
 	g_ClientInfo[client][ClientInfo_LastSequenceParity] = sequenceParity;
 }
 
-
-InitDataMapOffset(&offset, entity, const String:propName[])
+void InitDataMapOffset(int &offset, int entity, const char[] propName)
 {
 	if ((offset = FindDataMapOffs(entity, propName)) == -1)
 	{
