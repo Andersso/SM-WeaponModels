@@ -40,6 +40,14 @@
 				"linux"		"188"
 			}
 		}
+		"Signatures"
+		{
+			"GetSequenceActivity"
+			{
+				"windows"	"\x55\x8B\xEC\x83\x7D\x08\xFF\x56\x8B\xF1\x74\x4E\x80\xBE\x2D\x03"
+				"linux"		"@_ZN14CBaseAnimating19GetSequenceActivityEi"
+			}
+		}
 	}
 	"csgo"
 	{
@@ -54,6 +62,14 @@
 			{
 				"windows"	"68"
 				"linux"		"68"
+			}
+		}
+		"Signatures"
+		{
+			"GetSequenceActivity"
+			{
+				"windows"	"\x55\x8B\xEC\x53\x8B\x5D\x08\x57\x8B\xF9\x83\xFB\xFF\x75\x08\x5F"
+				"linux"		"@_ZN14CBaseAnimating19GetSequenceActivityEi"
 			}
 		}
 	}
@@ -72,6 +88,7 @@
 				"linux"		"40"
 			}
 		}
+		
 	}
 	"left4dead2"
 	{

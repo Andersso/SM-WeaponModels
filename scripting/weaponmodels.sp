@@ -131,7 +131,7 @@ enum WeaponModelInfoStatus
 enum WeaponModelInfo
 {
 	WeaponModelInfo_DefIndex,
-	WeaponModelInfo_SwapWeapon,
+//	WeaponModelInfo_SwapWeapon,
 	WeaponModelInfo_SwapSequences[MAX_SWAP_SEQEUENCES],
 	WeaponModelInfo_NumAnims,
 	Handle:WeaponModelInfo_Forward,
@@ -237,6 +237,7 @@ public int Native_AddWeaponByItemDefIndex(Handle plugin, int numParams)
 				break;
 			}
 
+			// FIXME: What is this?
 			return -1;
 		}
 	}
@@ -324,11 +325,12 @@ public int Native_RemoveWeaponModel(Handle plugin, int numParams)
 
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward].Close();
 
-	CleanUpSwapWeapon(weaponIndex);
+//	CleanUpSwapWeapon(weaponIndex);
 
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Status] = WeaponModelInfoStatus_Free;
 }
 
+/*
 void CleanUpSwapWeapon(int weaponIndex)
 {
 	int swapWeapon = EntRefToEntIndex(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
@@ -337,7 +339,7 @@ void CleanUpSwapWeapon(int weaponIndex)
 	{
 		AcceptEntityInput(swapWeapon, "Kill");
 	}
-}
+}*/
 
 public void OnPluginStart()
 {
@@ -375,7 +377,7 @@ public void OnPluginStart()
 
 	Handle gameConf = LoadGameConfigFile("plugin.weaponmodels");
 
-	if (gameConf)
+	if (gameConf != INVALID_HANDLE)
 	{
 		StartPrepSDKCall(SDKCall_Entity);
 		PrepSDKCall_SetFromConf(gameConf, SDKConf_Virtual, "UpdateTransmitState");
@@ -679,13 +681,14 @@ public void OnPluginEnd()
 		}
 	}
 
+	/*
 	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] != WeaponModelInfoStatus_Free)
 		{
 			CleanUpSwapWeapon(i);
 		}
-	}
+	}*/
 
 	LoadConfig();
 }
@@ -763,7 +766,7 @@ void LoadConfig()
 
 				g_WeaponModelInfo[weaponIndex][WeaponModelInfo_DefIndex] = defIndex;
 
-				CleanUpSwapWeapon(weaponIndex);
+				//CleanUpSwapWeapon(weaponIndex);
 
 				KvGetString(kv, "ViewModel", g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel], PLATFORM_MAX_PATH + 1);
 				KvGetString(kv, "WorldModel", g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModel], PLATFORM_MAX_PATH + 1);
@@ -958,6 +961,7 @@ public Action OnWeaponSwitch(int client, int weapon)
 		g_ClientInfo[client][ClientInfo_CustomWeapon] = weapon;
 		g_ClientInfo[client][ClientInfo_WeaponIndex] = i;
 
+		/*
 		if (EntRefToEntIndex(g_WeaponModelInfo[i][WeaponModelInfo_SwapWeapon]) <= 0)
 		{
 			if (g_WeaponModelInfo[i][WeaponModelInfo_ClassName][0] == '\0')
@@ -967,7 +971,7 @@ public Action OnWeaponSwitch(int client, int weapon)
 			}
 
 			g_WeaponModelInfo[i][WeaponModelInfo_SwapWeapon] = EntIndexToEntRef(CreateSwapWeapon(className, client));
-		}
+		}*/
 
 		return Plugin_Continue;
 	}
@@ -982,6 +986,7 @@ public Action OnWeaponSwitch(int client, int weapon)
 	return Plugin_Continue;
 }
 
+/*
 int CreateSwapWeapon(const char[] className, int client)
 {
 	int swapWeapon = CreateEntityByName(className);
@@ -1002,7 +1007,7 @@ int CreateSwapWeapon(const char[] className, int client)
 	AcceptEntityInput(swapWeapon, "SetParent", g_iEngineVersion == Engine_CSGO ? client : 0);
 
 	return swapWeapon;
-}
+}*/
 
 bool ExecuteForward(int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex = -1)
 {
@@ -1038,6 +1043,8 @@ int InitSwapSequenceArray(int swapSequences[MAX_SWAP_SEQEUENCES], int numAnims, 
 
 	if (!value)
 	{
+		//PrintToServer("%i - test", SDKCall(g_hSDKCall_GetSequenceActivity, weapon, index));
+		
 		// Continue to next if sequence wasn't an activity
 		if ((value = swapSequences[index] = SDKCall(g_hSDKCall_GetSequenceActivity, weapon, index)) == -1)
 		{
@@ -1132,7 +1139,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 
 	if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex])
 	{
-		ShowViewModel(viewModel1, true);
+		ShowViewModel(viewModel1, false);
 		ShowViewModel(viewModel2, true);
 
 		if (g_iEngineVersion == Engine_CSGO)
@@ -1170,16 +1177,12 @@ public void OnWeaponSwitchPost(int client, int weapon)
 			// Check if StudioHdr is valid
 			if (pStudioHdr >= Address_MinimumValid && (pStudioHdr = view_as<Address>(LoadFromAddress(pStudioHdr, NumberType_Int32))) >= Address_MinimumValid)
 			{
-				int numAnims = LoadFromAddress(pStudioHdr + view_as<Address>(g_iOffset_SequenceCount), NumberType_Int32), swapSequences[MAX_SWAP_SEQEUENCES];
+				int numAnims = LoadFromAddress(pStudioHdr + view_as<Address>(g_iOffset_SequenceCount), NumberType_Int32);
+				int swapSequences[MAX_SWAP_SEQEUENCES];
 
 				if (numAnims < MAX_SWAP_SEQEUENCES)
 				{
 					InitSwapSequenceArray(swapSequences, numAnims, weapon);
-					
-					for (int i = 0; i < numAnims; i++)
-					{
-						PrintToServer("%i", swapSequences[i]);
-					}
 
 					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_NumAnims] = numAnims;
 					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences] = swapSequences;
@@ -1204,7 +1207,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		SetEntData(viewModel2, g_iOffset_ModelIndex, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex], _, true);
 		SetEntDataFloat(viewModel2, g_iOffset_PlaybackRate, GetEntDataFloat(viewModel1, g_iOffset_PlaybackRate), true);
 
-		ToggleViewModelWeapon(client, viewModel2, weaponIndex);
+		//ToggleViewModelWeapon(client, viewModel2, weaponIndex);
 		
 		g_ClientInfo[client][ClientInfo_LastSequenceParity] = -1;
 	}
@@ -1219,6 +1222,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	}
 }
 
+/*
 void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 {
 	int swapWeapon;
@@ -1240,7 +1244,7 @@ void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 	}
 
 	SetEntDataEnt2(viewModel, g_iOffset_Weapon, swapWeapon, true);
-}
+}*/
 
 public void OnClientPostThinkPost(int client)
 {
@@ -1265,7 +1269,7 @@ public void OnClientPostThinkPost(int client)
 
 	int sequence = GetEntData(viewModel1, g_iOffset_Sequence);
 
-	bool predictedDraw = false;
+	//bool predictedDraw = false;
 
 	if (g_bPredictedWeaponSwitch)
 	{
@@ -1273,7 +1277,7 @@ public void OnClientPostThinkPost(int client)
 
 		if (updateTransmitStateTime && GetGameTime() > updateTransmitStateTime)
 		{
-			//PrintToServer("update");
+			//PrintToServer("update transmit state");
 			SDKCall(g_hSDKCall_UpdateTransmitState, viewModel1);
 
 			g_ClientInfo[client][ClientInfo_UpdateTransmitStateTime] = 0.0;
@@ -1282,7 +1286,7 @@ public void OnClientPostThinkPost(int client)
 		if (sequence == -2)
 		{
 			sequence = g_ClientInfo[client][ClientInfo_DrawSequence];
-			predictedDraw = true;
+			//predictedDraw = true;
 		}
 	}
 
@@ -1295,12 +1299,13 @@ public void OnClientPostThinkPost(int client)
 
 	int sequenceParity = GetEntData(viewModel1, newSequenceParityOffset);
 
+	// Sequence has not changed since last think
 	if (sequence == g_ClientInfo[client][ClientInfo_LastSequence])
 	{
 		// Skip on weapon switch
 		if (g_ClientInfo[client][ClientInfo_LastSequenceParity] != -1)
 		{
-			// Return if sequence hasn't finished
+			// Skip if sequence hasn't finished
 			if (sequenceParity == g_ClientInfo[client][ClientInfo_LastSequenceParity])
 			{
 				return;
@@ -1310,9 +1315,10 @@ public void OnClientPostThinkPost(int client)
 
 			int swapSequence = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences][sequence];
 
+			// Change to swap sequence, if exist
 			if (swapSequence != -1)
 			{
-				if (predictedDraw) PrintToServer("ah fuck");
+				//if (predictedDraw) PrintToServer("ah fuck");
 
 				SetEntData(viewModel1, g_iOffset_Sequence, swapSequence, _, true);
 				SetEntData(viewModel2, g_iOffset_Sequence, swapSequence, _, true);
@@ -1321,8 +1327,8 @@ public void OnClientPostThinkPost(int client)
 			}
 			else
 			{
-				if (predictedDraw) PrintToServer("ah fuck 2");
-				ToggleViewModelWeapon(client, viewModel2, weaponIndex);
+				//if (predictedDraw) PrintToServer("ah fuck 2");
+				//ToggleViewModelWeapon(client, viewModel2, weaponIndex);
 			}
 		}
 	}
