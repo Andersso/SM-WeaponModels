@@ -1,22 +1,4 @@
-// *Retrieving the offsets from game-binary (Linux)
-//
-// StudioHdr:
-//  1. StudioHdr offset can be retrieved from CBaseAnimating::GetModelPtr()
-//  2. m_hLightingOrigin offset can be retrieved on runtime using the SM API, or
-//     in ServerClassInit<DT_BaseAnimating::ignored>() and check the param stack on the SendProp init of m_hLightingOrigin
-//  3. And lastly: offset = m_pStudioHdr - m_hLightingOrigin
-//
-//  One last thing, GetModelPtr() returns a CStudioHdr object, which actually acts like a kind of wrapper of the studiohdr_t object.
-//  What we actually want is the pointer of the studiohdr_t object. And lucky we are, it's located as the first member of the
-//  CStudioHdr class. This means that we don't need any extra offset to get the pointer from memory.
-//  
-// Some useful references:
-// CStudioHdr: https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/public/studio.h#L2351
-// studiohdr_t: https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/public/studio.h#L2062
-// 
-// SequenceCount:
-// I believe this struct is ancient, and is never expected to change.
-//
+
 "Games"
 {
 	"#default"
@@ -24,25 +6,34 @@
 		// tf2, dod, cstrike, hl2mp
 		"Offsets"
 		{
-			"UpdateTransmitState"
+			"Entity_UpdateTransmitState"
 			{
 				"windows"	"19"
 				"linux"		"20"
 			}
-			"StudioHdr"
+			
+			// See https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/game/server/baseanimating.h#L421
+			"Animating_StudioHdr"
 			{
 				"windows"	"60"
 				"linux"		"60"
 			}
-			"SequenceCount"
+			// See https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/public/studio.h#L2133
+			"StudioHdrStruct_SequenceCount"
 			{
 				"windows"	"188"
 				"linux"		"188"
 			}
+			// See https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/public/studio.h#L1729
+			"VirtualModelStruct_SequenceVector_Size"
+			{
+				"windows"	"20"
+				"linux"		"20"
+			}
 		}
 		"Signatures"
 		{
-			"GetSequenceActivity"
+			"Animating_GetSequenceActivity"
 			{
 				"windows"	"\x55\x8B\xEC\x83\x7D\x08\xFF\x56\x8B\xF1\x74\x4E\x80\xBE\x2D\x03"
 				"linux"		"@_ZN14CBaseAnimating19GetSequenceActivityEi"
@@ -53,12 +44,12 @@
 	{
 		"Offsets"
 		{
-			"UpdateTransmitState"
+			"Entity_UpdateTransmitState"
 			{
 				"windows"	"21"
 				"linux"		"22"
 			}
-			"StudioHdr"
+			"Animating_StudioHdr"
 			{
 				"windows"	"68"
 				"linux"		"68"
@@ -66,7 +57,7 @@
 		}
 		"Signatures"
 		{
-			"GetSequenceActivity"
+			"Animating_GetSequenceActivity"
 			{
 				"windows"	"\x55\x8B\xEC\x53\x8B\x5D\x08\x57\x8B\xF9\x83\xFB\xFF\x75\x08\x5F"
 				"linux"		"@_ZN14CBaseAnimating19GetSequenceActivityEi"
@@ -77,12 +68,12 @@
 	{
 		"Offsets"
 		{
-			"UpdateTransmitState"
+			"Entity_UpdateTransmitState"
 			{
 				"windows"	"18"
 				"linux"		"19"
 			}
-			"StudioHdr"
+			"Animating_StudioHdr"
 			{
 				"windows"	"40"
 				"linux"		"40"
@@ -94,12 +85,12 @@
 	{
 		"Offsets"
 		{
-			"UpdateTransmitState"
+			"Entity_UpdateTransmitState"
 			{
 				"windows"	"20"
 				"linux"		"21"
 			}
-			"StudioHdr"
+			"Animating_StudioHdr"
 			{
 				"windows"	"3788"
 				"linux"		"3784"

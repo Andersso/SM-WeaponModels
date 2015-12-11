@@ -2,7 +2,7 @@
  * =============================================================================
  * Custom Weapon Models
  *
- * Copyright (C) 2014 Andersso
+ * Copyright (C) 2015 Andersso
  * =============================================================================
  *
  * This program is free software; you can redistribute it and/or modify it under
@@ -24,13 +24,13 @@
 #endif
 #define _weaponmodels_included
 
-funcenum WeaponModelsFunc
+typeset WeaponModelsFunc
 {
-	bool:public(weaponIndex, client, weapon, const String:className[]),
-	bool:public(weaponIndex, client, weapon, const String:className[], itemDefIndex)
+	function bool(int weaponIndex, int client, int weapon, const char[] className),
+	function bool(int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex)
 };
 
-public SharedPlugin:__pl_weaponmodels = 
+public SharedPlugin __pl_weaponmodels = 
 {
 	name = "weaponmodels",
 	file = "weaponmodels.smx",
@@ -41,7 +41,7 @@ public SharedPlugin:__pl_weaponmodels =
 #endif
 };
 
-public __pl_weaponmodels_SetNTVOptional()
+public void __pl_weaponmodels_SetNTVOptional()
 {
 	MarkNativeAsOptional("WeaponModels_AddWeaponByClassName");
 	MarkNativeAsOptional("WeaponModels_AddWeaponByItemDefIndex");
@@ -58,7 +58,7 @@ public __pl_weaponmodels_SetNTVOptional()
  * @return						The custom weapon model index, -1 on failure.
  * @error						Maximum amount of custom weapons has been reached.
  */
-native WeaponModels_AddWeaponByClassName(const String:className[], const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
+native void WeaponModels_AddWeaponByClassName(const char[] className, const char[] viewModel, const char[] worldModel, WeaponModelsFunc function);
 
 /**
  * @brief Adds a weapon model
@@ -70,7 +70,7 @@ native WeaponModels_AddWeaponByClassName(const String:className[], const String:
  * @return						The custom weapon model index, -1 on failure.
  * @error						Maximum amount of custom weapons has been reached.
  */
-native WeaponModels_AddWeaponByItemDefIndex(itemDefIndex, const String:viewModel[], const String:worldModel[], WeaponModelsFunc:function);
+native void WeaponModels_AddWeaponByItemDefIndex(int itemDefIndex, const char[] viewModel, const char[] worldModel, WeaponModelsFunc function);
 
 /**
  * @brief Removes a weapon model
@@ -79,4 +79,4 @@ native WeaponModels_AddWeaponByItemDefIndex(itemDefIndex, const String:viewModel
  * @noreturn
  * @error						Weapon index is invalid
  */
-native WeaponModels_RemoveWeaponModel(weaponIndex);
+native void WeaponModels_RemoveWeaponModel(int weaponIndex);
