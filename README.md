@@ -13,7 +13,7 @@ Changing the view model is not intended to be possible server-side, and therefor
  * **Team-Fortress 2** - *Not recommended, see [Custom Weapons](https://forums.alliedmods.net/showthread.php?p=2105924) plugin instead.*
 
 ## Requirements
- * SourceMod 1.7 or higher
+ * SourceMod 1.8 or higher
  * A view model should work optimally if these requirements are met:
   - Matching activities used by the original model
   - More than one fire animation
@@ -70,7 +70,7 @@ Here is an example
 // Don't forget the weaponmodels include!
 #include <weaponmodels>
 
-public OnMapStart()
+public void OnMapStart()
 {
 	WeaponModels_AddWeaponByClassName("weapon_knife", "models/weapons/v_my_custom_knife.mdl", NULL_STRING, WeaponModels_OnWeapon);
 	
@@ -79,9 +79,9 @@ public OnMapStart()
 }
 
 // Don't forget you can both share or have individual callbacks for weapons. In this case we share the callback
-public bool:WeaponModels_OnWeapon(weaponIndex, client, weapon, const String:className[], itemDefIndex)
+public bool WeaponModels_OnWeapon(int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex)
 {
-	new AdminId:adminId = GetUserAdmin(client);
+	AdminId adminId = GetUserAdmin(client);
 
 	// Player has an invalid admin id, don't show weapon
 	if (adminId == INVALID_ADMIN_ID)
