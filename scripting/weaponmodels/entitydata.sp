@@ -19,7 +19,7 @@
  *
  * *Retrieving the offsets from game-binary (Linux)
  *
- * StudioHdr:
+ * Animating_StudioHdr:
  *  1. StudioHdr offset can be retrieved from CBaseAnimating::GetModelPtr()
  *  2. m_hLightingOrigin offset can be retrieved on runtime using the SM API, or
  *     in ServerClassInit<DT_BaseAnimating::ignored>() and check the param stack on the SendProp init of m_hLightingOrigin
@@ -33,9 +33,13 @@
  * CStudioHdr: https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/public/studio.h#L2351
  * studiohdr_t: https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/public/studio.h#L2062
  * 
- * Animating_GetSequenceCount:
- * I believe this struct is ancient, and is never expected to change.
+ * StudioHdrStruct_SequenceCount:
+ *  I believe this struct is ancient, and is never expected to change.
  *
+ * Animating_GetSequenceActivity:
+ *  This function does not reference any strings or anything that makes the function easily searchable.
+ *  However, CAI_ScriptedSequence::StartSequence() calls this function, and is referencing following string: "%s: unknown scripted sequence \"%s\"\n"
+ *  The function itself should then be the first function referenced after the string.
  */
 
 Handle g_hSDKCall_Entity_UpdateTransmitState; // UpdateTransmitState will stop the view model from transmitting if EF_NODRAW flag is present

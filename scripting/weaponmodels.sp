@@ -98,7 +98,6 @@ enum WeaponModelInfo
 {
 	WeaponModelInfo_DefIndex,
 	WeaponModelInfo_SwapWeapon, // This property is used when g_bEconomyWeapons is false
-	bool:WeaponModelInfo_SwapWeaponIsCreated,
 	WeaponModelInfo_SwapSequences[MAX_SEQEUENCES],
 	WeaponModelInfo_SequenceCount,
 	Handle:WeaponModelInfo_Forward,
@@ -189,7 +188,7 @@ public void OnPluginStart()
 
 	WeaponModels_EntityDataInit();
 	
-	g_bEconomyWeapons = FindSendPropInfo("CBaseCombatWeapon", "m_iItemDefinitionIndex") != -1;
+	g_bEconomyWeapons = g_iOffset_EconItemDefinitionIndex != -1;
 	
 	HookEvent("player_death", Event_PlayerDeath);
 }
@@ -453,7 +452,7 @@ int CreateSwapWeapon(int weaponIndex, int client)
 
 	// CEconEntity: The parent of the swap weapon must the client using it
 	SetVariantString("!activator");
-	AcceptEntityInput(swapWeapon, "SetParent", g_bEconomyWeapons ? client : 0);
+	AcceptEntityInput(swapWeapon, "SetParent", client);
 
 	return swapWeapon;
 }
@@ -524,11 +523,6 @@ int BuildSwapSequenceArray(int swapSequences[MAX_SEQEUENCES], int sequenceCount,
 
 public void OnWeaponSwitchPost(int client, int weapon)
 {
-	if (IsFakeClient(client))
-	{
-		return;
-	}
-
 	// Callback is sometimes called on disconnected clients
 	if (!IsClientConnected(client))
 	{
@@ -653,7 +647,7 @@ void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 
 	if ((g_ClientInfo[client][ClientInfo_ToggleSequence] = !g_ClientInfo[client][ClientInfo_ToggleSequence]))
 	{
-		swapWeapon = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_SwapWeapon]);
+		swapWeapon = EntRefToEntIndex(g_bEconomyWeapons ? g_ClientInfo[client][ClientInfo_SwapWeapon] : g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
 
 		if (swapWeapon == -1)
 		{
