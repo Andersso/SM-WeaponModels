@@ -26,8 +26,8 @@
 
 typeset WeaponModelsFunc
 {
-	function bool(int weaponIndex, int client, int weapon, const char[] className),
-	function bool(int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex)
+	function bool (int weaponIndex, int client, int weapon, const char[] className);
+	function bool (int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex);
 };
 
 public SharedPlugin __pl_weaponmodels = 
@@ -58,7 +58,7 @@ public void __pl_weaponmodels_SetNTVOptional()
  * @return						The custom weapon model index, -1 on failure.
  * @error						Maximum amount of custom weapons has been reached.
  */
-native void WeaponModels_AddWeaponByClassName(const char[] className, const char[] viewModel, const char[] worldModel, WeaponModelsFunc function);
+native void WeaponModels_AddWeaponByClassName(const char[] className, const char[] viewModel, const char[] worldModel, WeaponModelsFunc _function);
 
 /**
  * @brief Adds a weapon model
@@ -70,7 +70,7 @@ native void WeaponModels_AddWeaponByClassName(const char[] className, const char
  * @return						The custom weapon model index, -1 on failure.
  * @error						Maximum amount of custom weapons has been reached.
  */
-native void WeaponModels_AddWeaponByItemDefIndex(int itemDefIndex, const char[] viewModel, const char[] worldModel, WeaponModelsFunc function);
+native void WeaponModels_AddWeaponByItemDefIndex(int itemDefIndex, const char[] viewModel, const char[] worldModel, WeaponModelsFunc _function);
 
 /**
  * @brief Removes a weapon model
