@@ -40,6 +40,32 @@
 			}
 		}
 	}
+	"nmrih"
+	{
+		"Offsets"
+		{
+			"Entity_UpdateTransmitState"
+			{
+				"windows"	"21"
+				"linux"		"22"
+			}
+
+			"Animating_StudioHdr" //?? get private pointer to m_pStudioHdr updated studiomdl cache
+			{
+				"windows"	"60"
+				"linux"		"60"
+			}
+		}
+		"Signatures"
+		{
+			"Animating_GetSequenceActivity" 
+			{
+				"windows"	"\x55\x8B\xEC\x53\x8B\x5D\x08\x57\x8B\xF9\x83\xFB\xFF\x75\x08\x5F"
+				"linux"		"@_ZN14CBaseAnimating19GetSequenceActivityEi"
+			}
+		}
+	}
+
 	"csgo"
 	{
 		"Offsets"

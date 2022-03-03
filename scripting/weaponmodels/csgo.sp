@@ -96,7 +96,7 @@ public void Event_WeaponFire(Event event, const char[] name, bool dontBrodcast)
 
 		if (!primaryAmmoTypeOffset)
 		{
-			InitSendPropOffset(primaryAmmoTypeOffset, "CBaseCombatWeapon", "m_iPrimaryAmmoType");
+			InitSendPropOffset(primaryAmmoTypeOffset, "CBaseCombatWeapon", "m_iPrimaryAmmoType", true);
 		}
 
 		int activeWeapon = GetEntDataEnt2(client, g_iOffset_PlayerActiveWeapon);
@@ -109,7 +109,7 @@ public void Event_WeaponFire(Event event, const char[] name, bool dontBrodcast)
 
 		if (!lastShotTimeOffset)
 		{
-			InitSendPropOffset(lastShotTimeOffset, "CWeaponCSBase", "m_fLastShotTime");
+			InitSendPropOffset(lastShotTimeOffset, "CWeaponCSBase", "m_fLastShotTime", true);
 		}
 		
 		float newHeat = ((gameTime - GetEntDataFloat(activeWeapon, lastShotTimeOffset)) * -0.5) + heatValue[client];

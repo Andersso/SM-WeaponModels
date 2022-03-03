@@ -18,8 +18,9 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-void WeaponModels_ApiInit()
+public void WeaponModels_ApiInit()
 {
+	PrintToServer("Initializing weaponmodels api");
 	RegPluginLibrary("weaponmodels");
 
 	CreateNative("WeaponModels_AddWeaponByClassName", Native_AddWeaponByClassName);
@@ -29,6 +30,7 @@ void WeaponModels_ApiInit()
 
 public int Native_AddWeaponByClassName(Handle plugin, int numParams)
 {
+	PrintToServer("Adding Weapon By Classname");
 	char className[CLASS_NAME_MAX_LENGTH];
 	GetNativeString(1, className, sizeof(className));
 
@@ -72,6 +74,7 @@ public int Native_AddWeaponByClassName(Handle plugin, int numParams)
 
 public int Native_AddWeaponByItemDefIndex(Handle plugin, int numParams)
 {
+	PrintToServer("Adding Weapon by item defined index");
 	int itemDefIndex = GetNativeCell(1);
 
 	if (itemDefIndex < 0)
@@ -117,8 +120,9 @@ public int Native_AddWeaponByItemDefIndex(Handle plugin, int numParams)
 	return weaponIndex;
 }
 
-void AddWeapon(int weaponIndex, const char[] viewModel, const char[] worldModel, Handle plugin, Function _function) // <- SP-Compiler error
+public void AddWeapon(int weaponIndex, const char[] viewModel, const char[] worldModel, Handle plugin, Function _function) // <- SP-Compiler error
 {
+	PrintToServer("Adding Weapon");
 	Handle forwardHandle = CreateForward(ET_Single, Param_Cell, Param_Cell, Param_Cell, Param_String, Param_Cell);
 
 	AddToForward(forwardHandle, plugin, _function);
@@ -134,8 +138,9 @@ void AddWeapon(int weaponIndex, const char[] viewModel, const char[] worldModel,
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Status] = WeaponModelInfoStatus_API;
 }
 
-bool CheckForwardCleanup(int weaponIndex)
+public bool CheckForwardCleanup(int weaponIndex)
 {
+	PrintToServer("Checking Forward Cleanup");
 	Handle forwardHandle = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward];
 
 	if (forwardHandle != INVALID_HANDLE)
@@ -148,8 +153,9 @@ bool CheckForwardCleanup(int weaponIndex)
 	return false;
 }
 
-int GetFreeWeaponInfoIndex()
+public int GetFreeWeaponInfoIndex()
 {
+
 	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_Free)
@@ -180,8 +186,9 @@ public int Native_RemoveWeaponModel(Handle plugin, int numParams)
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Status] = WeaponModelInfoStatus_Free;
 }
 
-bool ExecuteForward(int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex = -1)
+public bool ExecuteForward(int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex)
 {
+
 	Handle forwardHandle = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Forward];
 
 	// Clean-up, if required

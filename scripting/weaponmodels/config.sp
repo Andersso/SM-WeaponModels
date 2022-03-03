@@ -18,7 +18,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-void WeaponModels_ConfigInit()
+public void WeaponModels_ConfigInit()
 {
 	RegAdminCmd("sm_weaponmodels_reloadconfig", Command_ReloadConfig, ADMFLAG_CONFIG);
 }
@@ -28,7 +28,7 @@ public Action Command_ReloadConfig(int client, int numArgs)
 	LoadConfig();
 }
 
-void LoadConfig()
+public void LoadConfig()
 {
 	char path[PLATFORM_MAX_PATH + 1];
 	char buffer[PLATFORM_MAX_PATH + 1];

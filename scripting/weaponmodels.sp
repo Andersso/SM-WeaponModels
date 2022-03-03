@@ -18,7 +18,20 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
+/* TODO nmrih:
+ * Fix things;
+ * Find what's causing nodraw flag overwrite in SetEntityVisibility, find a better fix
+ * Switching a weapon doesn't immediately play the weapon selection animation; delay and singly janky movement at switch
+ * F̶i̶n̶d̶ a̶n̶d̶ r̶e̶m̶o̶v̶e̶ a̶l̶l̶ t̶h̶e̶ d̶e̶b̶u̶g̶ s̶h̶i̶t̶ l̶o̶l̶
+ * Transition code to new sourcemod syntax
+ * Find way to verify nmrih spectator status in OnClientSpawnPost
+ *
+ * Feature: more viewmodel support ( such as for melees, items, tools )
+ * 
+ * Optional: (gun)sound overrides
+ *				gun feel is heavily influenced by its sounds. Custom sounds may elevate immersion drastically
+ * Optional: per-client toggle and/or permissions. Could be fun for some kind of ingame shop.
+*/
 // TODO:
 // Test L4D1/L4D2
 // Toggle animation seems to bug on some rare occasions
@@ -37,12 +50,15 @@
 
 #pragma semicolon 1
 
+
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
 
 #define PLUGIN_NAME "Custom Weapon Models"
-#define PLUGIN_VERSION "1.2"
+#define PLUGIN_VERSION "1.5"
+#define ENGINE_NMRIH 19
+#define DEBUG true
 
 #include "weaponmodels/consts.sp"
 #include "weaponmodels/entitydata.sp"
@@ -50,14 +66,15 @@
 // This should be on top, sm includes still not updated as of today
 #pragma newdecls required
 
-Plugin myinfo =
+public Plugin myinfo =
 {
 	name        = PLUGIN_NAME,
-	author      = "Andersso",
+	author      = "Andersso, Thijs",
 	description = "Change any weapon model",
 	version     = PLUGIN_VERSION,
 	url         = "http://www.sourcemod.net/"
-};
+}
+
 
 // This value should be true on the later versions of Source which uses client-predicted weapon switching
 bool g_bPredictedWeaponSwitch = false;
@@ -135,18 +152,18 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	return APLRes_Success;
 }
 
-void PrecacheWeaponInfo(int weaponIndex)
+public void PrecacheWeaponInfo(int weaponIndex)
 {
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex] = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
 	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModelIndex] = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModel]);
 }
 
-int PrecacheWeaponInfo_PrecahceModel(const char[] model)
+public int PrecacheWeaponInfo_PrecahceModel(const char[] model)
 {
 	return model[0] != '\0' ? PrecacheModel(model, true) : 0;
 }
 
-void CleanUpSwapWeapon(int weaponIndex)
+public void CleanUpSwapWeapon(int weaponIndex)
 {
 	int swapWeapon = EntRefToEntIndex(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
 
@@ -161,24 +178,36 @@ public void OnPluginStart()
 	CreateConVar("sm_weaponmodels_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
 	WeaponModels_ConfigInit();
-	
+	// EngineVersion nmrih_v = view_as<EngineVersion>(ENGINE_NMRIH);
 	switch (g_iEngineVersion = GetEngineVersion())
 	{
+
+		case ENGINE_NMRIH:
+		{
+			g_szWeaponPrefix = "fa_";
+			//g_bPredictedWeaponSwitch = true;
+			//g_bViewModelOffsetIndependent = true;
+			PrintToServer("%s: initializing for No More Room in Hell", PLUGIN_NAME);
+		}
 		case Engine_DODS:
 		{
 			g_szViewModelClassName = "dod_viewmodel";
+			PrintToServer("%s: initializing for Day Of Defeat", PLUGIN_NAME);
 		}
 		case Engine_TF2:
 		{
 			g_szViewModelClassName = "tf_viewmodel";
 			g_szWeaponPrefix = "tf_weapon_";
+			PrintToServer("%s: initializing for Team Fortress 2", PLUGIN_NAME);
 		}
 		case Engine_Left4Dead, Engine_Left4Dead2, Engine_Portal2:
 		{
+			PrintToServer("%s: initializing for L4D/L4D2/Portal2", PLUGIN_NAME);
 			g_bPredictedWeaponSwitch = true;
 		}
 		case Engine_CSGO:
 		{
+			PrintToServer("%s: initializing for Counter Strike;Global Offensive", PLUGIN_NAME);
 			g_bPredictedWeaponSwitch = true;
 			g_bViewModelOffsetIndependent = true;
 			
@@ -233,7 +262,7 @@ public void OnPluginEnd()
 
 			if (viewModel1 != -1)
 			{
-				SetEntityVisibility(viewModel1, true);
+				SetEntityVisibility_FrameDelay(viewModel1, true);
 				SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
 			}
 
@@ -284,11 +313,27 @@ public void OnClientPostAdminCheck(int client)
 
 public void OnClientSpawnPost(int client)
 {
-	// No spectators
-	if (GetClientTeam(client) < 2)
-	{
-		return;
-	}
+
+	//nmrih spectators have the same team id as non spectators: 0
+	//without this engine check the code will always end here in nmrih
+	//TODO: Find way to verify nmrih spectator status 
+	EngineVersion zeEngineVersion = GetEngineVersion();
+	if ( zeEngineVersion != view_as<EngineVersion>(ENGINE_NMRIH) ){
+		// No spectators
+		int clientteam = GetClientTeam(client);
+		if (clientteam < 2)
+		{
+			#if defined debug
+			PrintToServer("%s: Client team is %d, not getting playerviewmodel", PLUGIN_NAME, clientteam);
+			#endif
+			return;
+		}
+	}	
+
+
+	//some games, such as nmrih, trigger clientspawn when player is on server entry screen, but not actually in the game yet (server join screen)
+	//add an extra check here
+	//Invalid entity index -1 on player joining prob caused by this
 
 	g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
 
@@ -301,7 +346,6 @@ public void OnClientSpawnPost(int client)
 		if ((viewModel2 = CreateEntityByName(g_szViewModelClassName)) == -1)
 		{
 			LogError("Failed to create secondary view model!");
-
 			return;
 		}
 
@@ -325,7 +369,6 @@ public void OnClientSpawnPost(int client)
 	SetEntityVisibility(viewModel2, false);
 
 	int activeWeapon = GetEntDataEnt2(client, g_iOffset_PlayerActiveWeapon);
-
 	OnWeaponSwitch(client, activeWeapon);
 	OnWeaponSwitchPost(client, activeWeapon);
 }
@@ -335,14 +378,24 @@ public Action OnWeaponSwitch(int client, int weapon)
 	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
 	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
 
+	#if defined DEBUG
+	PrintToServer("Hooked weapon switch");
+	#endif
+
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
+		#if defined DEBUG
+		PrintToServer("viewmodel invalid");
+		#endif
 		return Plugin_Continue;
 	}
 
 	char className[CLASS_NAME_MAX_LENGTH];
 	if (!GetEdictClassname(weapon, className, sizeof(className)))
 	{
+		#if defined DEBUG
+		PrintToServer("Could not get classname");
+		#endif
 		return Plugin_Continue;
 	}
 
@@ -350,9 +403,7 @@ public Action OnWeaponSwitch(int client, int weapon)
 	{
 		// Skip unused indexes
 		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_Free)
-		{
 			continue;
-		}
 
 		if (g_WeaponModelInfo[i][WeaponModelInfo_DefIndex] != -1)
 		{
@@ -381,7 +432,7 @@ public Action OnWeaponSwitch(int client, int weapon)
 		}
 		else if (g_WeaponModelInfo[i][WeaponModelInfo_Forward])
 		{
-			if (!ExecuteForward(i, client, weapon, className))
+			if (!ExecuteForward(i, client, weapon, className, -1))
 			{
 				continue;
 			}
@@ -412,6 +463,9 @@ public Action OnWeaponSwitch(int client, int weapon)
 	// Client has swapped to a regular weapon
 	if (g_ClientInfo[client][ClientInfo_CustomWeapon] != 0)
 	{
+		#if defined DEBUG
+		PrintToServer("Swapping to regular weapon");
+		#endif
 		g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
 		g_ClientInfo[client][ClientInfo_WeaponIndex] = -1;
 	}
@@ -419,16 +473,19 @@ public Action OnWeaponSwitch(int client, int weapon)
 	return Plugin_Continue;
 }
 
-int CreateSwapWeapon(int weaponIndex, int client)
+public int CreateSwapWeapon(int weaponIndex, int client)
 {
 	int customWeapon = g_ClientInfo[client][ClientInfo_CustomWeapon];
 	
 	if (g_bViewModelOffsetIndependent)
-	{
+	{	
+		#if defined DEBUG
+		PrintToServer("Creating SwapWeapon");
+		#endif
+
 		for (int i = 0; i < MAX_WEAPONS; i++)
 		{
 			int weapon = GetEntDataEnt2(client, g_iOffset_CharacterWeapons + (i * 4));
-			
 			if (weapon != -1 && weapon != customWeapon)
 			{
 				return weapon;
@@ -457,8 +514,8 @@ int CreateSwapWeapon(int weaponIndex, int client)
 	return swapWeapon;
 }
 
-// This algorithm gives me an headache, even though I made it myself. But it's as fast as it can be I hope
-int BuildSwapSequenceArray(int swapSequences[MAX_SEQEUENCES], int sequenceCount, int weapon, int index = 0)
+// This algorithm gives me an headache, even though I made it myself. But it's as fast as it can be I hope 
+public int BuildSwapSequenceArray(int swapSequences[MAX_SEQEUENCES], int sequenceCount, int weapon, int index)
 {
 	int value = swapSequences[index], swapIndex = -1;
 
@@ -528,7 +585,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	{
 		return;
 	}
-
+	
 	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
 	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
 
@@ -544,12 +601,11 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		// Hide the secondary view model. This needs to be done on post because the weapon needs to be switched first
 		if (weaponIndex == -1)
 		{
-			SetEntityVisibility(viewModel1, true);
+			SetEntityVisibility_FrameDelay(viewModel1, true);
 			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
 
 			SetEntityVisibility(viewModel2, false);
 			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
-
 			g_ClientInfo[client][ClientInfo_WeaponIndex] = 0;
 		}
 
@@ -558,13 +614,19 @@ public void OnWeaponSwitchPost(int client, int weapon)
 
 	if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex])
 	{
-		SetEntityVisibility(viewModel1, false);
+		#if defined DEBUG
+		PrintToServer("Setting viewmodel1, entid %d, visibility..", viewModel1);
+		#endif
+		SetEntityVisibility_FrameDelay(viewModel1, false);
+
+		#if defined DEBUG
+		PrintToServer("Setting viewmodel2, entid %d, visibility..", viewModel2);
+		#endif
 		SetEntityVisibility(viewModel2, true);
 		
 		if (g_iEngineVersion == Engine_CSGO)
-		{
 			StopParticleEffects(client, viewModel2);
-		}
+		
 
 		if (g_bPredictedWeaponSwitch)
 		{
@@ -576,13 +638,13 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		else
 		{
 			SetEntData(viewModel2, g_iOffset_ViewModelSequence, GetEntData(viewModel1, g_iOffset_ViewModelSequence), _, true);
-
 			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
 		}
 
 		SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
 
 		SetEntityModel(weapon, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
+
 
 		if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SequenceCount] == -1)
 		{
@@ -595,7 +657,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 				if (sequenceCount < MAX_SEQEUENCES)
 				{
 
-					BuildSwapSequenceArray(swapSequences, sequenceCount, weapon);
+					BuildSwapSequenceArray(swapSequences, sequenceCount, weapon, 0);
 
 					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SequenceCount] = sequenceCount;
 					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences] = swapSequences;
@@ -625,7 +687,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		
 		SetEntDataFloat(viewModel2, g_iOffset_ViewModelPlaybackRate, GetEntDataFloat(viewModel1, g_iOffset_ViewModelPlaybackRate), true);
 
-		// FIXME: Why am I calling this?
+		// FIXME: Why am I calling this? - good question lol
 		ToggleViewModelWeapon(client, viewModel2, weaponIndex);
 		
 		g_ClientInfo[client][ClientInfo_LastSequenceParity] = -1;
@@ -641,7 +703,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	}
 }
 
-void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
+public void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 {
 	int swapWeapon;
 
@@ -749,7 +811,6 @@ public void OnClientPostThinkPost(int client)
 		if (g_bPredictedWeaponSwitch && drawSequence != -1 && sequence != drawSequence)
 		{
 			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
-
 			g_ClientInfo[client][ClientInfo_DrawSequence] = -1;
 		}
 		
