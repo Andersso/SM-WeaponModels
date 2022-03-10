@@ -22,7 +22,6 @@
  * Fix things;
  * Find what's causing nodraw flag overwrite in SetEntityVisibility, find a better fix
  * Switching a weapon doesn't immediately play the weapon selection animation; delay and singly janky movement at switch
- * F̶i̶n̶d̶ a̶n̶d̶ r̶e̶m̶o̶v̶e̶ a̶l̶l̶ t̶h̶e̶ d̶e̶b̶u̶g̶ s̶h̶i̶t̶ l̶o̶l̶
  * Transition code to new sourcemod syntax
  * Find way to verify nmrih spectator status in OnClientSpawnPost
  *
@@ -49,16 +48,17 @@
 */
 
 #pragma semicolon 1
-
+#pragma newdecls required
 
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
 
 #define PLUGIN_NAME "Custom Weapon Models"
-#define PLUGIN_VERSION "1.5"
-#define ENGINE_NMRIH 19
-#define DEBUG true
+#define PLUGIN_VERSION "1.3"
+
+// #define DEBUG true
+
 
 #include "weaponmodels/consts.sp"
 #include "weaponmodels/entitydata.sp"
@@ -73,7 +73,7 @@ public Plugin myinfo =
 	description = "Change any weapon model",
 	version     = PLUGIN_VERSION,
 	url         = "http://www.sourcemod.net/"
-}
+};
 
 
 // This value should be true on the later versions of Source which uses client-predicted weapon switching
@@ -178,40 +178,47 @@ public void OnPluginStart()
 	CreateConVar("sm_weaponmodels_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
 	WeaponModels_ConfigInit();
-	// EngineVersion nmrih_v = view_as<EngineVersion>(ENGINE_NMRIH);
 	switch (g_iEngineVersion = GetEngineVersion())
 	{
 
-		case ENGINE_NMRIH:
+		case Engine_SDK2013:
 		{
 			g_szWeaponPrefix = "fa_";
-			//g_bPredictedWeaponSwitch = true;
-			//g_bViewModelOffsetIndependent = true;
+			#if defined DEBUG
 			PrintToServer("%s: initializing for No More Room in Hell", PLUGIN_NAME);
+			#endif
 		}
 		case Engine_DODS:
 		{
 			g_szViewModelClassName = "dod_viewmodel";
+			#if defined DEBUG
 			PrintToServer("%s: initializing for Day Of Defeat", PLUGIN_NAME);
+			#endif
 		}
 		case Engine_TF2:
 		{
 			g_szViewModelClassName = "tf_viewmodel";
 			g_szWeaponPrefix = "tf_weapon_";
+			#if defined DEBUG
 			PrintToServer("%s: initializing for Team Fortress 2", PLUGIN_NAME);
+			#endif
 		}
 		case Engine_Left4Dead, Engine_Left4Dead2, Engine_Portal2:
 		{
-			PrintToServer("%s: initializing for L4D/L4D2/Portal2", PLUGIN_NAME);
 			g_bPredictedWeaponSwitch = true;
+			#if defined DEBUG
+			PrintToServer("%s: initializing for L4D/L4D2/Portal2", PLUGIN_NAME);
+			#endif
 		}
 		case Engine_CSGO:
 		{
-			PrintToServer("%s: initializing for Counter Strike;Global Offensive", PLUGIN_NAME);
 			g_bPredictedWeaponSwitch = true;
 			g_bViewModelOffsetIndependent = true;
 			
 			WeaponModels_CSGOInit();
+			#if defined DEBUG
+			PrintToServer("%s: initializing for Counter Strike;Global Offensive", PLUGIN_NAME);
+			#endif
 		}
 	}
 
@@ -221,6 +228,7 @@ public void OnPluginStart()
 	
 	HookEvent("player_death", Event_PlayerDeath);
 }
+
 
 public void Event_PlayerDeath(Event event, const char[] eventName, bool dontBrodcast)
 {
@@ -262,7 +270,9 @@ public void OnPluginEnd()
 
 			if (viewModel1 != -1)
 			{
-				SetEntityVisibility_FrameDelay(viewModel1, true);
+				if (g_iEngineVersion == Engine_SDK2013)	{ SetEntityVisibility_FrameDelay(viewModel1, true); }
+				else 									{ SetEntityVisibility(viewModel1, true); 			}
+
 				SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
 			}
 
@@ -317,23 +327,24 @@ public void OnClientSpawnPost(int client)
 	//nmrih spectators have the same team id as non spectators: 0
 	//without this engine check the code will always end here in nmrih
 	//TODO: Find way to verify nmrih spectator status 
-	EngineVersion zeEngineVersion = GetEngineVersion();
-	if ( zeEngineVersion != view_as<EngineVersion>(ENGINE_NMRIH) ){
+	if ( g_iEngineVersion != Engine_SDK2013 )
+	{
 		// No spectators
-		int clientteam = GetClientTeam(client);
-		if (clientteam < 2)
+		int clientTeam = GetClientTeam(client);
+		if (clientTeam < 2)
 		{
-			#if defined debug
-			PrintToServer("%s: Client team is %d, not getting playerviewmodel", PLUGIN_NAME, clientteam);
-			#endif
 			return;
 		}
 	}	
 
-
 	//some games, such as nmrih, trigger clientspawn when player is on server entry screen, but not actually in the game yet (server join screen)
 	//add an extra check here
-	//Invalid entity index -1 on player joining prob caused by this
+	//Invalid entity index -1 on player joining may be caused by this
+	if ( IsClientInGame(client) )
+	{
+		PrintToServer("client not in game yet, exiting onclientspawn to prevent invalid entity index 01");
+		return;
+	}
 
 	g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
 
@@ -378,24 +389,14 @@ public Action OnWeaponSwitch(int client, int weapon)
 	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
 	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
 
-	#if defined DEBUG
-	PrintToServer("Hooked weapon switch");
-	#endif
-
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
-		#if defined DEBUG
-		PrintToServer("viewmodel invalid");
-		#endif
 		return Plugin_Continue;
 	}
 
 	char className[CLASS_NAME_MAX_LENGTH];
 	if (!GetEdictClassname(weapon, className, sizeof(className)))
 	{
-		#if defined DEBUG
-		PrintToServer("Could not get classname");
-		#endif
 		return Plugin_Continue;
 	}
 
@@ -463,9 +464,6 @@ public Action OnWeaponSwitch(int client, int weapon)
 	// Client has swapped to a regular weapon
 	if (g_ClientInfo[client][ClientInfo_CustomWeapon] != 0)
 	{
-		#if defined DEBUG
-		PrintToServer("Swapping to regular weapon");
-		#endif
 		g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
 		g_ClientInfo[client][ClientInfo_WeaponIndex] = -1;
 	}
@@ -479,10 +477,6 @@ public int CreateSwapWeapon(int weaponIndex, int client)
 	
 	if (g_bViewModelOffsetIndependent)
 	{	
-		#if defined DEBUG
-		PrintToServer("Creating SwapWeapon");
-		#endif
-
 		for (int i = 0; i < MAX_WEAPONS; i++)
 		{
 			int weapon = GetEntDataEnt2(client, g_iOffset_CharacterWeapons + (i * 4));
@@ -601,7 +595,8 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		// Hide the secondary view model. This needs to be done on post because the weapon needs to be switched first
 		if (weaponIndex == -1)
 		{
-			SetEntityVisibility_FrameDelay(viewModel1, true);
+			if (g_iEngineVersion == Engine_SDK2013)	{ SetEntityVisibility_FrameDelay(viewModel1, true); }
+			else 									{ SetEntityVisibility(viewModel1, true); 			}
 			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
 
 			SetEntityVisibility(viewModel2, false);
@@ -617,13 +612,12 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		#if defined DEBUG
 		PrintToServer("Setting viewmodel1, entid %d, visibility..", viewModel1);
 		#endif
-		SetEntityVisibility_FrameDelay(viewModel1, false);
 
-		#if defined DEBUG
-		PrintToServer("Setting viewmodel2, entid %d, visibility..", viewModel2);
-		#endif
+		if (g_iEngineVersion == Engine_SDK2013)	{ SetEntityVisibility_FrameDelay(viewModel1, true); }
+		else 									{ SetEntityVisibility(viewModel1, true); 			}
+
 		SetEntityVisibility(viewModel2, true);
-		
+
 		if (g_iEngineVersion == Engine_CSGO)
 			StopParticleEffects(client, viewModel2);
 		

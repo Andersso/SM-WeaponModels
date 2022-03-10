@@ -44,7 +44,6 @@
 
 Handle g_hSDKCall_Entity_UpdateTransmitState; // UpdateTransmitState will stop the view model from transmitting if EF_NODRAW flag is present
 Handle g_hSDKCall_Animating_GetSequenceActivity;
-Handle g_hDSKCall_CombatWeapon_SetWeaponVisible;
 
 int g_iOffset_Animating_StudioHdr;
 int g_iOffset_StudioHdrStruct_SequenceCount;
@@ -70,8 +69,9 @@ int g_iOffset_ViewModelIndex;
 
 int g_iOffset_ViewModelIgnoreOffsAcc;
 int g_iOffset_EconItemDefinitionIndex;
+int g_iFrameSkipCount;
 
-#define ENGINE_NMRIH 19
+#define FRAMESKIPCOUNT
 
 // See https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/public/studio.h#L2371
 enum StudioHdrClass
@@ -82,7 +82,7 @@ enum StudioHdrClass
 
 public void InitGameConfOffset(Handle gameConf, int &offsetDest, const char[] keyName)
 {
-	PrintToServer("InitGameConfOffset");
+	// PrintToServer("InitGameConfOffset");
 	if ((offsetDest = GameConfGetOffset(gameConf, keyName)) == -1)
 	{
 		SetFailState("Failed to get offset: \"%s\"!", keyName);
@@ -91,7 +91,7 @@ public void InitGameConfOffset(Handle gameConf, int &offsetDest, const char[] ke
 
 public void InitSendPropOffset(int &offsetDest, const char[] serverClass, const char[] propName, bool failOnError)
 {
-	PrintToServer("InitSendPropOffset");
+	// PrintToServer("InitSendPropOffset");
 	if ( (offsetDest = FindSendPropInfo(serverClass, propName) ) < 1 && failOnError)
 	{
 		SetFailState("Failed to find offset: \"%s\"!", propName);
@@ -128,16 +128,6 @@ public void WeaponModels_EntityDataInit()
 			SetFailState("Failed to load SDK call \"Animating_GetSequenceActivity\"!");
 		}
 
-		// //lets try using 	CBaseCombatWeapon::SetWeaponVisible( bool visible ) to toggle weapon viewmodel visibility - nvrm
-		// StartPrepSDKCall(SDKCall_Entity);
-		// PrepSDKCall_SetFromConf(gameConf, SDKConf_Virtual, "CombatWeapon_SetWeaponVisible");
-		// PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); //bool
-
-		// if (!(g_hDSKCall_CombatWeapon_SetWeaponVisible = EndPrepSDKCall()))
-		// {
-		// 	SetFailState("Failed to load SDK call \"CombatWeapon_SetWeaponVisible\"!");
-		// }
-
 		InitGameConfOffset(gameConf, g_iOffset_Animating_StudioHdr, "Animating_StudioHdr");
 		InitGameConfOffset(gameConf, g_iOffset_StudioHdrStruct_SequenceCount, "StudioHdrStruct_SequenceCount");
 		InitGameConfOffset(gameConf, g_iOffset_VirtualModelStruct_SequenceVector_Size, "VirtualModelStruct_SequenceVector_Size");
@@ -150,25 +140,9 @@ public void WeaponModels_EntityDataInit()
 		SetFailState("Failed to load game conf");
 	}
 	
-	//NMRiH has player entity named as: CNMRiH_Player (type DT_NMRiH_Player)
-	//if nmrih engine version: replace CBasePlayer with CNMRiH_Player
-	//probably replace CBaseCombatCharacter as well
-	//for some reason using CBasePlayer and CBaseCombatCharacter is slightly more laggy when switching
-	//maybe its nocebo tho lol
-
-	// EngineVersion zeEngineVersion = GetEngineVersion();
-	// if ( zeEngineVersion == view_as<EngineVersion>(ENGINE_NMRIH) ){			
-	// PrintToServer("custom weapon models: init CNMRiH_Player offsets");
-	// InitSendPropOffset(g_iOffset_CharacterWeapons, "CNMRiH_Player", "m_hMyWeapons", true);
-	// InitSendPropOffset(g_iOffset_PlayerViewModel, "CNMRiH_Player", "m_hViewModel", true);
-	// InitSendPropOffset(g_iOffset_PlayerActiveWeapon, "CNMRiH_Player", "m_hActiveWeapon", true);
-	// }
-	// else{
 	InitSendPropOffset(g_iOffset_CharacterWeapons, "CBaseCombatCharacter", "m_hMyWeapons", true);
 	InitSendPropOffset(g_iOffset_PlayerViewModel, "CBasePlayer", "m_hViewModel", true);
 	InitSendPropOffset(g_iOffset_PlayerActiveWeapon, "CBasePlayer", "m_hActiveWeapon", true);
-	// }
-	
 
 	InitSendPropOffset(g_iOffset_EntityEffects, "CBaseEntity", "m_fEffects", true);
 	InitSendPropOffset(g_iOffset_EntityModelIndex, "CBaseEntity", "m_nModelIndex", true);
@@ -193,70 +167,65 @@ public void WeaponModels_EntityDataInit()
 
 	// StudioHdr offset in gameconf is only relative to the offset of m_hLightingOrigin, in order to make the offset more resilient to game updates
 	g_iOffset_Animating_StudioHdr += lightingOriginOffset;
+
+	g_iFrameSkipCount = FRAMESKIPCOUNT;
 }
 
 public int GetPlayerViewModel(int client, int index)
 {
-	#if defined DEBUG
-	PrintToServer("GetPlayerViewModel");
-	#endif
 	return GetEntDataEnt2(client, g_iOffset_PlayerViewModel + (index * 4));
 }
 
 public void SetPlayerViewModel(int client, int index, int viewModel)
 {
-	#if defined DEBUG
-	PrintToServer("SetPlayerViewModel");
-	#endif
 	SetEntDataEnt2(client, g_iOffset_PlayerViewModel + (index * 4), viewModel, true);
 }
 
 public void SetEntityVisibility(int entity, bool show){
-
-	#if defined DEBUG
-	PrintToServer("Seting EntityVisibility for entity: %d", entity);
-	#endif
-
 	int flags = GetEntData(entity, g_iOffset_EntityEffects);
 	SetEntData(entity, g_iOffset_EntityEffects, show ? flags & ~EF_NODRAW : flags | EF_NODRAW, _, true);
 }
-
-public void NextFrameSetVisibility(DataPack dataPackHandle){
-
-	ResetPack(dataPackHandle);
- 	int framestoskip = dataPackHandle.ReadCell();
- 	if ( framestoskip > 0 )		//recursive frame skip	
-	{
-		ResetPack(dataPackHandle);
- 		dataPackHandle.WriteCell( framestoskip-1 );
-		
- 		RequestFrame(NextFrameSetVisibility, dataPackHandle);
- 		return;
-	}
-	int show = dataPackHandle.ReadCell();
-	int entity = dataPackHandle.ReadCell();
-	
-	SetEntityVisibility(entity, show ? true : false);
-}
-
 
 
 //bug in nmrih: old viewmodel still visible: double viewmodel
 //perhaps caused by unknown function overwriting flags after delay
 //temp fix: add frame skip delay to setting viewmodel1's nodraw flag
 //TODO: Find cause and less hacky solution!
-public void SetEntityVisibility_FrameDelay(int entity, bool show){
+public void SetEntityVisibility_FrameDelay(int entity, bool show)
+{
 	DataPack pack = new DataPack();
+	pack.WriteCell(g_iFrameSkipCount);					//frames to skip
 
-	pack.WriteCell(60);					//frames to skip
-
-	if (show)	pack.WriteCell(1);		 
-	else		pack.WriteCell(0);		
-
-	pack.WriteCell(entity);	
+	if (show)	
+	{
+		pack.WriteCell(1);		 
+	}
+	else		
+	{
+		pack.WriteCell(0);		
+	}
+	entref = EntIndexToEntRef(entity);	//if entities are modified after delay; use references!
+	pack.WriteCell(entref);	
 	RequestFrame(NextFrameSetVisibility, pack);
 }
 
+public void NextFrameSetVisibility(DataPack dataPackHandle)
+{
+	ResetPack(dataPackHandle);
+ 	int framesToSkip = dataPackHandle.ReadCell();
+ 	if ( framesToSkip > 0 )		//recursive frame skip	
+	{
+		ResetPack(dataPackHandle);
+ 		dataPackHandle.WriteCell( framesToSkip-1 );
+		
+ 		RequestFrame(NextFrameSetVisibility, dataPackHandle);
+ 		return; 
+	}
+	bool show = dataPackHandle.ReadCell();
+	int entref = EntRefToEntIndex(	dataPackHandle.ReadCell()	);
+
+	SetEntityVisibility(entity, show);
+}
 
 // This function simulates the equivalent function in the SDK
 // The game has two methods for getting the sequence count:
@@ -268,7 +237,7 @@ public int Animating_GetSequenceCount(int animating)
 	
 	if (studioHdrClass == Address_Null)
 	{
-		PrintToServer("---Custom Weapons--- Unable to verify verify studioHdrClass. ( Invalid Animating_StudioHdr offset for the game/mod in plugin.weaponmodels.txt?)");
+		LogError("---Custom Weapons--- Unable to verify verify studioHdrClass. ( Invalid Animating_StudioHdr offset for the game/mod in plugin.weaponmodels.txt?)");
 		return -1;
 	}
 	
