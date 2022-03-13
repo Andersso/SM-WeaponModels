@@ -19,17 +19,46 @@
  *
  */
 /* TODO nmrih:
- * Fix things;
- * Find what's causing nodraw flag overwrite in SetEntityVisibility, find a better fix
+
+ * Find what's causing nodraw flag overwrite in SetEntityVisibility, find a better fix than to delay frames
+	HINT: 	This is likely caused by a holster animation, and subsequent unholster of new weapon
+			This follows up nicely in the following issue:
  * Switching a weapon doesn't immediately play the weapon selection animation; delay and singly janky movement at switch
+					m_nSequence recording:
+					4 (hands idle01)
+	switch superx3:	4->1 (superx idle01dry)
+					1->6 (superx unholster)
+					6->0 (superx idle01)
+	switch back to hands:
+				0	 to 7	
+				0	 to 7	
+				7	 to 4	
+				7	 to 4	
+				4	 to 0	
+				4	 to 0	
+				0	 to 4	
+				0	 to 4	
+	As you can see, this looks it would be janky, and indeed, that is the case in game
+
  * Transition code to new sourcemod syntax
  * Find way to verify nmrih spectator status in OnClientSpawnPost
- *
+ 
  * Feature: more viewmodel support ( such as for melees, items, tools )
- * 
+ 
  * Optional: (gun)sound overrides
- *				gun feel is heavily influenced by its sounds. Custom sounds may elevate immersion drastically
+			gun feel is heavily influenced by its sounds. Custom sounds may elevate immersion drastically
+			alas, this may be impossible
  * Optional: per-client toggle and/or permissions. Could be fun for some kind of ingame shop.
+ 
+ * current:  check if can do 10 frames, repeating if fail, for viewmodel1
+ *			 weapon switch fade in/out
+ 			 and/or hide viewmodel2 after time | weapon holster sequence complete
+ *			 I need a global variable storing weapon visibility status
+
+ * Changes:
+ * 
+ * plugin is reloaded while players are ingame.
+
 */
 // TODO:
 // Test L4D1/L4D2
@@ -58,7 +87,6 @@
 #define PLUGIN_VERSION "1.3"
 
 // #define DEBUG true
-
 
 #include "weaponmodels/consts.sp"
 #include "weaponmodels/entitydata.sp"
@@ -127,6 +155,7 @@ enum WeaponModelInfo
 	bool:WeaponModelInfo_BlockLAW,
 	WeaponModelInfoStatus:WeaponModelInfo_Status
 };
+
 
 int g_WeaponModelInfo[MAX_CUSTOM_WEAPONS][WeaponModelInfo];
 
@@ -223,7 +252,9 @@ public void OnPluginStart()
 	}
 
 	WeaponModels_EntityDataInit();
-	
+
+
+
 	g_bEconomyWeapons = g_iOffset_EconItemDefinitionIndex != -1;
 	
 	HookEvent("player_death", Event_PlayerDeath);
@@ -270,8 +301,7 @@ public void OnPluginEnd()
 
 			if (viewModel1 != -1)
 			{
-				if (g_iEngineVersion == Engine_SDK2013)	{ SetEntityVisibility_FrameDelay(viewModel1, true); }
-				else 									{ SetEntityVisibility(viewModel1, true); 			}
+				SetEntityVisibility(viewModel1, true);
 
 				SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
 			}
@@ -323,7 +353,6 @@ public void OnClientPostAdminCheck(int client)
 
 public void OnClientSpawnPost(int client)
 {
-
 	//nmrih spectators have the same team id as non spectators: 0
 	//without this engine check the code will always end here in nmrih
 	//TODO: Find way to verify nmrih spectator status 
@@ -336,15 +365,6 @@ public void OnClientSpawnPost(int client)
 			return;
 		}
 	}	
-
-	//some games, such as nmrih, trigger clientspawn when player is on server entry screen, but not actually in the game yet (server join screen)
-	//add an extra check here
-	//Invalid entity index -1 on player joining may be caused by this
-	if ( IsClientInGame(client) )
-	{
-		PrintToServer("client not in game yet, exiting onclientspawn to prevent invalid entity index 01");
-		return;
-	}
 
 	g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
 
@@ -383,6 +403,7 @@ public void OnClientSpawnPost(int client)
 	OnWeaponSwitch(client, activeWeapon);
 	OnWeaponSwitchPost(client, activeWeapon);
 }
+
 
 public Action OnWeaponSwitch(int client, int weapon)
 {
@@ -595,12 +616,21 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		// Hide the secondary view model. This needs to be done on post because the weapon needs to be switched first
 		if (weaponIndex == -1)
 		{
-			if (g_iEngineVersion == Engine_SDK2013)	{ SetEntityVisibility_FrameDelay(viewModel1, true); }
-			else 									{ SetEntityVisibility(viewModel1, true); 			}
-			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
 
-			SetEntityVisibility(viewModel2, false);
-			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
+			if (g_iEngineVersion == Engine_SDK2013)	{
+				//idk how to hide/show at the end of the holster sequence..
+				//for now just keep viewmodels invisible/visible until end of holster sequence.
+				//the viewmodel should eventually change lol
+				SetEntityVisibility(viewModel2, false);
+				SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
+				}
+			else {
+				SetEntityVisibility(viewModel1, true);
+				SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
+				SetEntityVisibility(viewModel2, false);
+				SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
+			}
+			
 			g_ClientInfo[client][ClientInfo_WeaponIndex] = 0;
 		}
 
@@ -609,13 +639,14 @@ public void OnWeaponSwitchPost(int client, int weapon)
 
 	if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex])
 	{
-		#if defined DEBUG
-		PrintToServer("Setting viewmodel1, entid %d, visibility..", viewModel1);
-		#endif
 
-		if (g_iEngineVersion == Engine_SDK2013)	{ SetEntityVisibility_FrameDelay(viewModel1, true); }
-		else 									{ SetEntityVisibility(viewModel1, true); 			}
-
+		if (g_iEngineVersion == Engine_SDK2013)	{ 
+			SetEntityVisibility_FrameDelay(viewModel1, false, 60);
+		}
+		else { 
+			SetEntityVisibility(viewModel1, false); 			
+		}
+		
 		SetEntityVisibility(viewModel2, true);
 
 		if (g_iEngineVersion == Engine_CSGO)

@@ -71,7 +71,7 @@ int g_iOffset_ViewModelIgnoreOffsAcc;
 int g_iOffset_EconItemDefinitionIndex;
 int g_iFrameSkipCount;
 
-#define FRAMESKIPCOUNT
+#define FRAMESKIPCOUNT 100
 
 // See https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/public/studio.h#L2371
 enum StudioHdrClass
@@ -186,46 +186,53 @@ public void SetEntityVisibility(int entity, bool show){
 	SetEntData(entity, g_iOffset_EntityEffects, show ? flags & ~EF_NODRAW : flags | EF_NODRAW, _, true);
 }
 
+public bool GetEntityVisibility(int entity){
+	int flags = GetEntData(entity, g_iOffset_EntityEffects);
+	return !(flags & EF_NODRAW);
+}
 
 //bug in nmrih: old viewmodel still visible: double viewmodel
 //perhaps caused by unknown function overwriting flags after delay
 //temp fix: add frame skip delay to setting viewmodel1's nodraw flag
 //TODO: Find cause and less hacky solution!
-public void SetEntityVisibility_FrameDelay(int entity, bool show)
+public void SetEntityVisibility_FrameDelay(int entity, bool show, int frames)
 {
 	DataPack pack = new DataPack();
-	pack.WriteCell(g_iFrameSkipCount);					//frames to skip
 
-	if (show)	
-	{
-		pack.WriteCell(1);		 
-	}
-	else		
-	{
-		pack.WriteCell(0);		
-	}
-	entref = EntIndexToEntRef(entity);	//if entities are modified after delay; use references!
+	pack.WriteCell(frames);					//frames to skip
+	pack.WriteCell(view_as<int>(show));	
+
+	int entref = EntIndexToEntRef(entity);	//if entities are modified after delay; use references!
 	pack.WriteCell(entref);	
+
 	RequestFrame(NextFrameSetVisibility, pack);
 }
+
 
 public void NextFrameSetVisibility(DataPack dataPackHandle)
 {
 	ResetPack(dataPackHandle);
  	int framesToSkip = dataPackHandle.ReadCell();
- 	if ( framesToSkip > 0 )		//recursive frame skip	
+	bool show = dataPackHandle.ReadCell();
+	int entity = EntRefToEntIndex(	dataPackHandle.ReadCell()	);
+
+ 	if (framesToSkip > 0)		//recursive frame skip	
 	{
+		if ( GetEntityVisibility(entity) != show )
+		{
+		SetEntityVisibility(entity, show);
+		}
+
 		ResetPack(dataPackHandle);
  		dataPackHandle.WriteCell( framesToSkip-1 );
-		
+
  		RequestFrame(NextFrameSetVisibility, dataPackHandle);
  		return; 
 	}
-	bool show = dataPackHandle.ReadCell();
-	int entref = EntRefToEntIndex(	dataPackHandle.ReadCell()	);
-
-	SetEntityVisibility(entity, show);
 }
+
+
+
 
 // This function simulates the equivalent function in the SDK
 // The game has two methods for getting the sequence count:
