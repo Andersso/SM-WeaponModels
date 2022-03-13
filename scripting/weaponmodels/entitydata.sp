@@ -82,7 +82,6 @@ enum StudioHdrClass
 
 public void InitGameConfOffset(Handle gameConf, int &offsetDest, const char[] keyName)
 {
-	// PrintToServer("InitGameConfOffset");
 	if ((offsetDest = GameConfGetOffset(gameConf, keyName)) == -1)
 	{
 		SetFailState("Failed to get offset: \"%s\"!", keyName);
@@ -91,7 +90,6 @@ public void InitGameConfOffset(Handle gameConf, int &offsetDest, const char[] ke
 
 public void InitSendPropOffset(int &offsetDest, const char[] serverClass, const char[] propName, bool failOnError)
 {
-	// PrintToServer("InitSendPropOffset");
 	if ( (offsetDest = FindSendPropInfo(serverClass, propName) ) < 1 && failOnError)
 	{
 		SetFailState("Failed to find offset: \"%s\"!", propName);
@@ -100,9 +98,6 @@ public void InitSendPropOffset(int &offsetDest, const char[] serverClass, const 
 
 public void WeaponModels_EntityDataInit()
 {
-	#if defined DEBUG
-	PrintToServer("WeaponModels_Entity Data Initialization");
-	#endif
 	Handle gameConf = LoadGameConfigFile("plugin.weaponmodels");
 
 	if (gameConf != INVALID_HANDLE)
