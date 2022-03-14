@@ -287,10 +287,9 @@ public int Animating_GetSequenceActivity(int animating, int sequence)
 	return SDKCall(g_hSDKCall_Animating_GetSequenceActivity, animating, sequence);
 }
 
-/*
 Address Animating_GetStudioHdrClass(int animating)
 {
-	return view_as<Address>(GetEntData(animating, g_iOffset_StudioHdr));
+	return view_as<Address>(GetEntData(animating, g_iOffset_Animating_StudioHdr));
 }
 
 Address StudioHdrClass_GetStudioHdrStruct(Address studioHdrClass)
@@ -300,7 +299,7 @@ Address StudioHdrClass_GetStudioHdrStruct(Address studioHdrClass)
 
 int StudioHdrGetSequenceCount(Address studioHdrStruct)
 {
-	return LoadFromAddress(studioHdrStruct + view_as<Address>(g_iOffset_SequenceCount), NumberType_Int32);
+	return LoadFromAddress(studioHdrStruct + view_as<Address>(g_iOffset_StudioHdrStruct_SequenceCount), NumberType_Int32);
 }
 
 enum StudioAnimDesc
@@ -311,14 +310,14 @@ enum StudioAnimDesc
 }
 
 
-int Animating_GetNumMovements(int animating, int sequence)
-{
-	Address studioHdrStruct = StudioHdrClass_GetStudioHdrStruct(Animating_GetStudioHdrClass(animating));
+// int Animating_GetNumMovements(int animating, int sequence)
+// {
+// 	Address studioHdrStruct = StudioHdrClass_GetStudioHdrStruct(Animating_GetStudioHdrClass(animating));
 	
-	Address studioAnimDesc = GetLocalAnimDescription(studioHdrStruct, sequence);
+// 	Address studioAnimDesc = GetLocalAnimDescription(studioHdrStruct, sequence);
 	
-	return StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumMovements);
-}
+// 	return StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumMovements);
+// }
 
 
 // This does not count in weight
@@ -328,7 +327,7 @@ float Animating_GetSequenceDuration(int animating, int sequence)
 	
 	Address studioAnimDesc = GetLocalAnimDescription(studioHdrStruct, sequence);
 	
-	//PrintToServer("%f - %i", StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_Fps), StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumFrames));
+	PrintToServer("%f - %i", StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_Fps), StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumFrames));
 	
 	float cyclesPerSecond = view_as<float>(StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_Fps)) / (StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumFrames) - 1);
 	
@@ -350,4 +349,4 @@ Address GetLocalAnimDescription(Address studioHdrStruct, int sequence)
 any StudioAnimDesc_GetValue(Address studioAnimDesc, StudioAnimDesc type, NumberType size = NumberType_Int32)
 {
 	return LoadFromAddress(studioAnimDesc + view_as<Address>(type), size);
-}*/
+}
