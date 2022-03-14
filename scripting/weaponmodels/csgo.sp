@@ -32,7 +32,7 @@ public Action Command_LookAtWeapon(int client, const char[] command, int numArgs
 	{
 		int weaponIndex = g_ClientInfo[client].ClientInfo_WeaponIndex;
 
-		if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_BlockLAW])
+		if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_BlockLAW)
 		{
 			return Plugin_Handled;
 		}

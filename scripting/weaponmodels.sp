@@ -94,24 +94,24 @@ enum WeaponModelInfoStatus
 	WeaponModelInfoStatus_API
 };
 
-enum WeaponModelInfo
+enum struct WeaponModelInfo
 {
-	WeaponModelInfo_DefIndex,
-	WeaponModelInfo_SwapWeapon, // This property is used when g_bEconomyWeapons is false
-	WeaponModelInfo_SwapSequences[MAX_SEQEUENCES],
-	WeaponModelInfo_SequenceCount,
-	Handle:WeaponModelInfo_Forward,
-	String:WeaponModelInfo_ClassName[CLASS_NAME_MAX_LENGTH + 1],
-	String:WeaponModelInfo_ViewModel[PLATFORM_MAX_PATH + 1],
-	String:WeaponModelInfo_WorldModel[PLATFORM_MAX_PATH + 1],
-	WeaponModelInfo_ViewModelIndex,
-	WeaponModelInfo_WorldModelIndex,
-	WeaponModelInfo_TeamNum,
-	bool:WeaponModelInfo_BlockLAW,
-	WeaponModelInfoStatus:WeaponModelInfo_Status
-};
+	int WeaponModelInfo_DefIndex;
+	int WeaponModelInfo_SwapWeapon; // This property is used when g_bEconomyWeapons is false
+	int WeaponModelInfo_SwapSequences[MAX_SEQEUENCES];
+	int WeaponModelInfo_SequenceCount;
+	Handle WeaponModelInfo_Forward;
+	char WeaponModelInfo_ClassName[CLASS_NAME_MAX_LENGTH + 1];
+	char WeaponModelInfo_ViewModel[PLATFORM_MAX_PATH + 1];
+	char WeaponModelInfo_WorldModel[PLATFORM_MAX_PATH + 1];
+	int WeaponModelInfo_ViewModelIndex;
+	int WeaponModelInfo_WorldModelIndex;
+	int WeaponModelInfo_TeamNum;
+	bool WeaponModelInfo_BlockLAW;
+	WeaponModelInfoStatus WeaponModelInfo_Status;
+}
 
-int g_WeaponModelInfo[MAX_CUSTOM_WEAPONS][WeaponModelInfo];
+WeaponModelInfo g_WeaponModelInfo[MAX_CUSTOM_WEAPONS];
 
 #include "weaponmodels/config.sp"
 #include "weaponmodels/csgo.sp"
@@ -137,8 +137,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 void PrecacheWeaponInfo(int weaponIndex)
 {
-	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex] = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
-	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModelIndex] = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModel]);
+	g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel);
+	g_WeaponModelInfo[weaponIndex].WeaponModelInfo_WorldModelIndex = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex].WeaponModelInfo_WorldModel);
 }
 
 int PrecacheWeaponInfo_PrecahceModel(const char[] model)
@@ -148,7 +148,7 @@ int PrecacheWeaponInfo_PrecahceModel(const char[] model)
 
 void CleanUpSwapWeapon(int weaponIndex)
 {
-	int swapWeapon = EntRefToEntIndex(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
+	int swapWeapon = EntRefToEntIndex(g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapWeapon);
 
 	if (swapWeapon > 0)
 	{
@@ -249,7 +249,7 @@ public void OnPluginEnd()
 	{
 		for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 		{
-			if (g_WeaponModelInfo[i][WeaponModelInfo_Status] != WeaponModelInfoStatus_Free)
+			if (g_WeaponModelInfo[i].WeaponModelInfo_Status != WeaponModelInfoStatus_Free)
 			{
 				CleanUpSwapWeapon(i);
 			}
@@ -262,7 +262,7 @@ public void OnConfigsExecuted()
 	// In case of map-change
 	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
-		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_API)
+		if (g_WeaponModelInfo[i].WeaponModelInfo_Status == WeaponModelInfoStatus_API)
 		{
 			PrecacheWeaponInfo(i);
 		}
@@ -349,12 +349,12 @@ public Action OnWeaponSwitch(int client, int weapon)
 	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		// Skip unused indexes
-		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_Free)
+		if (g_WeaponModelInfo[i].WeaponModelInfo_Status == WeaponModelInfoStatus_Free)
 		{
 			continue;
 		}
 
-		if (g_WeaponModelInfo[i][WeaponModelInfo_DefIndex] != -1)
+		if (g_WeaponModelInfo[i].WeaponModelInfo_DefIndex != -1)
 		{
 			if (!g_bEconomyWeapons)
 			{
@@ -365,28 +365,28 @@ public Action OnWeaponSwitch(int client, int weapon)
 
 			int itemDefIndex = GetEntData(weapon, g_iOffset_EconItemDefinitionIndex);
 
-			if (g_WeaponModelInfo[i][WeaponModelInfo_DefIndex] != itemDefIndex)
+			if (g_WeaponModelInfo[i].WeaponModelInfo_DefIndex != itemDefIndex)
 			{
 				continue;
 			}
 
-			if (g_WeaponModelInfo[i][WeaponModelInfo_Forward] && !ExecuteForward(i, client, weapon, className, itemDefIndex))
+			if (g_WeaponModelInfo[i].WeaponModelInfo_Forward && !ExecuteForward(i, client, weapon, className, itemDefIndex))
 			{
 				continue;
 			}
 		}
-		else if (!StrEqual(className, g_WeaponModelInfo[i][WeaponModelInfo_ClassName], false))
+		else if (!StrEqual(className, g_WeaponModelInfo[i].WeaponModelInfo_ClassName, false))
 		{
 			continue;
 		}
-		else if (g_WeaponModelInfo[i][WeaponModelInfo_Forward])
+		else if (g_WeaponModelInfo[i].WeaponModelInfo_Forward)
 		{
 			if (!ExecuteForward(i, client, weapon, className))
 			{
 				continue;
 			}
 		}
-		else if (g_WeaponModelInfo[i][WeaponModelInfo_TeamNum] && g_WeaponModelInfo[i][WeaponModelInfo_TeamNum] != GetClientTeam(client))
+		else if (g_WeaponModelInfo[i].WeaponModelInfo_TeamNum && g_WeaponModelInfo[i].WeaponModelInfo_TeamNum != GetClientTeam(client))
 		{
 			continue;
 		}
@@ -396,14 +396,14 @@ public Action OnWeaponSwitch(int client, int weapon)
 		g_ClientInfo[client].ClientInfo_WeaponIndex = i;
 
 		// Get the class-name if the custom weapon is set by definition index
-		if (g_WeaponModelInfo[i][WeaponModelInfo_ClassName][0] == '\0')
+		if (g_WeaponModelInfo[i].WeaponModelInfo_ClassName[0] == '\0')
 		{
-			GetEdictClassname(weapon, g_WeaponModelInfo[i][WeaponModelInfo_ClassName], CLASS_NAME_MAX_LENGTH);
+			GetEdictClassname(weapon, g_WeaponModelInfo[i].WeaponModelInfo_ClassName, CLASS_NAME_MAX_LENGTH);
 		}
 
-		if (!g_bEconomyWeapons && EntRefToEntIndex(g_WeaponModelInfo[i][WeaponModelInfo_SwapWeapon]) <= 0)
+		if (!g_bEconomyWeapons && EntRefToEntIndex(g_WeaponModelInfo[i].WeaponModelInfo_SwapWeapon) <= 0)
 		{
-			g_WeaponModelInfo[i][WeaponModelInfo_SwapWeapon] = EntIndexToEntRef(CreateSwapWeapon(i, client));
+			g_WeaponModelInfo[i].WeaponModelInfo_SwapWeapon = EntIndexToEntRef(CreateSwapWeapon(i, client));
 		}
 
 		return Plugin_Continue;
@@ -436,7 +436,7 @@ int CreateSwapWeapon(int weaponIndex, int client)
 		}
 	}
 	
-	int swapWeapon = CreateEntityByName(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ClassName]);
+	int swapWeapon = CreateEntityByName(g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ClassName);
 
 	if (swapWeapon == -1)
 	{
@@ -557,7 +557,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		return;
 	}
 
-	if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex])
+	if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex)
 	{
 		SetEntityVisibility(viewModel1, false);
 		SetEntityVisibility(viewModel2, true);
@@ -583,9 +583,9 @@ public void OnWeaponSwitchPost(int client, int weapon)
 
 		SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
 
-		SetEntityModel(weapon, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
+		SetEntityModel(weapon, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel);
 
-		if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SequenceCount] == -1)
+		if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SequenceCount == -1)
 		{
 			int sequenceCount = Animating_GetSequenceCount(weapon);
 
@@ -598,13 +598,13 @@ public void OnWeaponSwitchPost(int client, int weapon)
 
 					BuildSwapSequenceArray(swapSequences, sequenceCount, weapon);
 
-					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SequenceCount] = sequenceCount;
-					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences] = swapSequences;
+					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SequenceCount = sequenceCount;
+					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapSequences = swapSequences;
 				}
 				else
 				{
 					LogError("View model \"%s\" is having too many sequences! (Max %i, is %i) - Increase value of MAX_SEQEUENCES in plugin",
-						g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel],
+						g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel,
 						MAX_SEQEUENCES,
 						sequenceCount);
 				}
@@ -613,16 +613,16 @@ public void OnWeaponSwitchPost(int client, int weapon)
 			{
 				for (int i = 0; i < MAX_SEQEUENCES; i++)
 				{
-					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences][i] = -1;
+					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapSequences[i] = -1;
 				}
 
 				LogError("Failed to get sequence count for weapon using model \"%s\" - Animations may not work as expected",
-					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
+					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel);
 			}
 		}
 
-		SetEntData(viewModel1, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex], _, true);
-		SetEntData(viewModel2, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex], _, true);
+		SetEntData(viewModel1, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex, _, true);
+		SetEntData(viewModel2, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex, _, true);
 		
 		SetEntDataFloat(viewModel2, g_iOffset_ViewModelPlaybackRate, GetEntDataFloat(viewModel1, g_iOffset_ViewModelPlaybackRate), true);
 
@@ -636,9 +636,9 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		g_ClientInfo[client].ClientInfo_CustomWeapon = 0;
 	}
 
-	if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModelIndex])
+	if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_WorldModelIndex)
 	{
-		SetEntData(weapon, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModelIndex], _, true);
+		SetEntData(weapon, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_WorldModelIndex, _, true);
 	}
 }
 
@@ -649,7 +649,7 @@ void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 	// TODO: WTF? Expression always false?
 	if ((g_ClientInfo[client].ClientInfo_ToggleSequence = !g_ClientInfo[client].ClientInfo_ToggleSequence))
 	{
-		swapWeapon = EntRefToEntIndex(g_bEconomyWeapons ? g_ClientInfo[client].ClientInfo_SwapWeapon : g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
+		swapWeapon = EntRefToEntIndex(g_bEconomyWeapons ? g_ClientInfo[client].ClientInfo_SwapWeapon : g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapWeapon);
 
 		if (swapWeapon == -1)
 		{
@@ -661,7 +661,7 @@ void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 			}
 			else
 			{
-				g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon] = EntIndexToEntRef(swapWeapon);
+				g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapWeapon = EntIndexToEntRef(swapWeapon);
 			}
 		}
 	}
@@ -730,7 +730,7 @@ public void OnClientPostThinkPost(int client)
 			}
 
 			int weaponIndex = g_ClientInfo[client].ClientInfo_WeaponIndex;
-			int swapSequence = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences][sequence];
+			int swapSequence = g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapSequences[sequence];
 			
 			// Change to swap sequence, if present
 			if (swapSequence != -1)
