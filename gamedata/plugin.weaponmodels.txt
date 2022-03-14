@@ -55,6 +55,11 @@
 				"windows"	"60"
 				"linux"		"60"
 			}
+			"NMRiH_WeaponBase_GetHolsterActivity" //?? get private pointer to m_pStudioHdr updated studiomdl cache
+			{
+				"windows"	"379"
+				"linux"		"380"
+			}
 		}
 		"Signatures"
 		{

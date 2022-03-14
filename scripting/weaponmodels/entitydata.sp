@@ -44,6 +44,7 @@
 
 Handle g_hSDKCall_Entity_UpdateTransmitState; // UpdateTransmitState will stop the view model from transmitting if EF_NODRAW flag is present
 Handle g_hSDKCall_Animating_GetSequenceActivity;
+Handle g_hSDKCall_WeaponBase_GetHolsterActivity;
 
 int g_iOffset_Animating_StudioHdr;
 int g_iOffset_StudioHdrStruct_SequenceCount;
@@ -69,7 +70,7 @@ int g_iOffset_ViewModelIndex;
 
 int g_iOffset_ViewModelIgnoreOffsAcc;
 int g_iOffset_EconItemDefinitionIndex;
-int g_iFrameSkipCount;
+
 
 #define FRAMESKIPCOUNT 100
 
@@ -123,6 +124,16 @@ public void WeaponModels_EntityDataInit()
 			SetFailState("Failed to load SDK call \"Animating_GetSequenceActivity\"!");
 		}
 
+		//holster activity
+		StartPrepSDKCall(SDKCall_Entity);
+		PrepSDKCall_SetFromConf(gameConf, SDKConf_Virtual, "NMRiH_WeaponBase_GetHolsterActivity");
+		PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+
+		if (!(g_hSDKCall_WeaponBase_GetHolsterActivity = EndPrepSDKCall()))
+		{
+			SetFailState("Failed to load SDK call \"WeaponBase_GetHolsterActivity\"!");
+		}
+
 		InitGameConfOffset(gameConf, g_iOffset_Animating_StudioHdr, "Animating_StudioHdr");
 		InitGameConfOffset(gameConf, g_iOffset_StudioHdrStruct_SequenceCount, "StudioHdrStruct_SequenceCount");
 		InitGameConfOffset(gameConf, g_iOffset_VirtualModelStruct_SequenceVector_Size, "VirtualModelStruct_SequenceVector_Size");
@@ -162,8 +173,6 @@ public void WeaponModels_EntityDataInit()
 
 	// StudioHdr offset in gameconf is only relative to the offset of m_hLightingOrigin, in order to make the offset more resilient to game updates
 	g_iOffset_Animating_StudioHdr += lightingOriginOffset;
-
-	g_iFrameSkipCount = FRAMESKIPCOUNT;
 }
 
 public int GetPlayerViewModel(int client, int index)
@@ -190,7 +199,7 @@ public bool GetEntityVisibility(int entity){
 //perhaps caused by unknown function overwriting flags after delay
 //temp fix: add frame skip delay to setting viewmodel1's nodraw flag
 //TODO: Find cause and less hacky solution!
-public void SetEntityVisibility_FrameDelay(int entity, bool show, int frames)
+public void SetEntityVisibility_FrameDelay(int entity, bool show, int frames, int weapon)
 {
 	DataPack pack = new DataPack();
 
@@ -199,6 +208,9 @@ public void SetEntityVisibility_FrameDelay(int entity, bool show, int frames)
 
 	int entref = EntIndexToEntRef(entity);	//if entities are modified after delay; use references!
 	pack.WriteCell(entref);	
+
+	int wepentref = EntIndexToEntRef(weapon);	//if entities are modified after delay; use references!
+	pack.WriteCell(wepentref);
 
 	RequestFrame(NextFrameSetVisibility, pack);
 }
@@ -210,14 +222,18 @@ public void NextFrameSetVisibility(DataPack dataPackHandle)
  	int framesToSkip = dataPackHandle.ReadCell();
 	bool show = dataPackHandle.ReadCell();
 	int entity = EntRefToEntIndex(	dataPackHandle.ReadCell()	);
+	int weapon = EntRefToEntIndex(	dataPackHandle.ReadCell()	);
 
- 	if (framesToSkip > 0)		//recursive frame skip	
+ 	if (framesToSkip > 0)							//recursive frame skip	
 	{
-		if ( GetEntityVisibility(entity) != show )
+		if ( GetEntityVisibility(entity) != show ) 	//check before setting, to reduce potential unnecessary networking.
 		{
 		SetEntityVisibility(entity, show);
 		}
 
+		int activity = Animating_GetSequenceActivity(weapon, 172);
+		
+		PrintToChatAll("Holster Activity: %d", activity); 
 		ResetPack(dataPackHandle);
  		dataPackHandle.WriteCell( framesToSkip-1 );
 

@@ -116,7 +116,13 @@ bool g_bViewModelOffsetIndependent = false;
 EngineVersion g_iEngineVersion;
 
 char g_szViewModelClassName[CLASS_NAME_MAX_LENGTH] = "predicted_viewmodel";
-char g_szWeaponPrefix[CLASS_NAME_MAX_LENGTH] = "weapon_";
+//char g_szWeaponPrefix[CLASS_NAME_MAX_LENGTH] = "weapon_"; // never used? removing..
+
+// char g_szMeleePrefix[CLASS_NAME_MAX_LENGTH] = "me_";
+
+ConVar g_iFrameSkipCount;
+
+
 
 enum ClientInfo
 {
@@ -212,7 +218,8 @@ public void OnPluginStart()
 
 		case Engine_SDK2013:
 		{
-			g_szWeaponPrefix = "fa_";
+			//g_szWeaponPrefix = "fa_";
+			// g_szMeleePrefix = "me_";
 			#if defined DEBUG
 			PrintToServer("%s: initializing for No More Room in Hell", PLUGIN_NAME);
 			#endif
@@ -227,7 +234,7 @@ public void OnPluginStart()
 		case Engine_TF2:
 		{
 			g_szViewModelClassName = "tf_viewmodel";
-			g_szWeaponPrefix = "tf_weapon_";
+			//g_szWeaponPrefix = "tf_weapon_";
 			#if defined DEBUG
 			PrintToServer("%s: initializing for Team Fortress 2", PLUGIN_NAME);
 			#endif
@@ -253,7 +260,7 @@ public void OnPluginStart()
 
 	WeaponModels_EntityDataInit();
 
-
+	g_iFrameSkipCount = CreateConVar("sm_frameskip", "60", "frame skip count for weapon switch");
 
 	g_bEconomyWeapons = g_iOffset_EconItemDefinitionIndex != -1;
 	
@@ -405,10 +412,12 @@ public void OnClientSpawnPost(int client)
 }
 
 
+
 public Action OnWeaponSwitch(int client, int weapon)
 {
 	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
 	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+
 
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
@@ -420,6 +429,8 @@ public Action OnWeaponSwitch(int client, int weapon)
 	{
 		return Plugin_Continue;
 	}
+
+	PrintToServer("viewmodel1:%d viewmodel2%d:", viewModel1, viewModel2);
 
 	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
@@ -593,6 +604,9 @@ public int BuildSwapSequenceArray(int swapSequences[MAX_SEQEUENCES], int sequenc
 	return value;
 }
 
+
+
+
 public void OnWeaponSwitchPost(int client, int weapon)
 {
 	// Callback is sometimes called on disconnected clients
@@ -641,7 +655,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	{
 
 		if (g_iEngineVersion == Engine_SDK2013)	{ 
-			SetEntityVisibility_FrameDelay(viewModel1, false, 60);
+			SetEntityVisibility_FrameDelay(viewModel1, false, g_iFrameSkipCount.IntValue, weapon);
 		}
 		else { 
 			SetEntityVisibility(viewModel1, false); 			
