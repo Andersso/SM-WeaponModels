@@ -162,6 +162,9 @@ public void OnPluginStart()
 
 	WeaponModels_ConfigInit();
 	
+	char gameFolder[PLATFORM_MAX_PATH + 1];
+	GetGameFolderName(gameFolder, sizeof(gameFolder));
+
 	switch (g_iEngineVersion = GetEngineVersion())
 	{
 		case Engine_DODS:
@@ -183,6 +186,10 @@ public void OnPluginStart()
 			g_bViewModelOffsetIndependent = true;
 			
 			WeaponModels_CSGOInit();
+		}
+		case Engine_SDK2013:
+		{
+			
 		}
 	}
 
@@ -559,10 +566,12 @@ public void OnWeaponSwitchPost(int client, int weapon)
 
 	if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex)
 	{
+		int sequence = GetEntProp(weapon, Prop_Send, "m_nSequence");
 		int activity = Animating_GetSequenceActivity(weapon, GetEntProp(weapon, Prop_Send, "m_nSequence"));
 		if (activity == ACT_VM_HOLSTER)
 		{
-			PrintToServer("Activity is holster!!!!");
+			float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
+			PrintToServer("Activity is holster!!!! duration: %f", sequenceDuration);
 		}
 
 		SetEntityVisibility(viewModel1, false);
