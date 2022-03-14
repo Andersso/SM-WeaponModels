@@ -559,6 +559,12 @@ public void OnWeaponSwitchPost(int client, int weapon)
 
 	if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex)
 	{
+		int activity = Animating_GetSequenceActivity(weapon, GetEntProp(weapon, Prop_Send, "m_nSequence"));
+		if (activity == ACT_VM_HOLSTER)
+		{
+			PrintToServer("Activity is holster!!!!");
+		}
+
 		SetEntityVisibility(viewModel1, false);
 		SetEntityVisibility(viewModel2, true);
 		
