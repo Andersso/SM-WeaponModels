@@ -68,6 +68,11 @@
 				"windows"	"\x55\x8B\xEC\x53\x8B\x5D\x08\x57\x8B\xF9\x83\xFB\xFF\x75\x08\x5F"
 				"linux"		"@_ZN14CBaseAnimating19GetSequenceActivityEi"
 			}
+			"Animating_SequenceDuration"
+			{
+				"windows"	"\x55\x8B\xEC\x56\x8B\x75\x08\x57\x8B\xF9\x85\xF6\x75\x2D\x8B\x47\x5C"
+				"linux"		"@_ZN14CBaseAnimating16SequenceDurationEP10CStudioHdri"
+			}
 		}
 	}
 
