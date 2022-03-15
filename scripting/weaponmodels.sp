@@ -631,11 +631,12 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		// Hide the secondary view model. This needs to be done on post because the weapon needs to be switched first
 		if (weaponIndex == -1)
 		{
-
+			PrintToServer("version: %d", g_iEngineVersion);
 			if (g_iEngineVersion == Engine_SDK2013)	{
 				//idk how to hide/show at the end of the holster sequence..
 				//for now just keep viewmodels invisible/visible until end of holster sequence.
 				//the viewmodel should eventually change lol
+				PrintToServer("nmrih");
 				SetEntityVisibility(viewModel2, false);
 				SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
 				}
@@ -655,20 +656,26 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	{
 		int sequence = GetEntProp(weapon, Prop_Send, "m_nSequence");
 		int activity = Animating_GetSequenceActivity(weapon, GetEntProp(weapon, Prop_Send, "m_nSequence"));
-		if (activity == ACT_VM_HOLSTER)
+		if (activity == 912)
 		{
 			float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
-			PrintToServer("Activity is holster!!!! duration: %f", sequenceDuration);
+			PrintToServer("Activity is unholster!!!! (912) duration: %f", sequenceDuration);
+		}
+		if (activity == 911)
+		{
+			float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
+			PrintToServer("Activity is holster!!!! (911) duration: %f", sequenceDuration);
 		}
 
-		SetEntityVisibility(viewModel1, false);
-		SetEntityVisibility(viewModel2, true);
-		
+
+		SetEntityVisibility_FrameDelay(viewModel1, false, 60, weapon);
+
 		SetEntityVisibility(viewModel2, true);
 
 		if (g_iEngineVersion == Engine_CSGO)
+		{
 			StopParticleEffects(client, viewModel2);
-		
+		}
 
 		if (g_bPredictedWeaponSwitch)
 		{

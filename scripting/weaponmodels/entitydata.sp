@@ -45,6 +45,7 @@
 Handle g_hSDKCall_Entity_UpdateTransmitState; // UpdateTransmitState will stop the view model from transmitting if EF_NODRAW flag is present
 Handle g_hSDKCall_Animating_GetSequenceActivity;
 Handle g_hSDKCall_WeaponBase_GetHolsterActivity;
+Handle g_hSDKCall_Animating_SequenceDuration;
 
 int g_iOffset_Animating_StudioHdr;
 int g_iOffset_StudioHdrStruct_SequenceCount;
@@ -124,6 +125,20 @@ public void WeaponModels_EntityDataInit()
 			SetFailState("Failed to load SDK call \"Animating_GetSequenceActivity\"!");
 		}
 
+		// float CBaseAnimating::SequenceDuration( CStudioHdr *pStudioHdr, int iSequence )
+		// See https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/game/server/baseanimating.cpp#L938
+		StartPrepSDKCall(SDKCall_Entity);
+		PrepSDKCall_SetFromConf(gameConf, SDKConf_Signature, "Animating_SequenceDuration");
+
+		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CStudioHdr *pStudioHdr
+		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // int iSequence
+		PrepSDKCall_SetReturnInfo(SDKType_Float, SDKPass_Plain);
+
+		if (!(g_hSDKCall_Animating_SequenceDuration = EndPrepSDKCall()))
+		{
+			SetFailState("Failed to load SDK call \"Animating_SequenceDuration\"!");
+		}
+
 		//holster activity
 		StartPrepSDKCall(SDKCall_Entity);
 		PrepSDKCall_SetFromConf(gameConf, SDKConf_Virtual, "NMRiH_WeaponBase_GetHolsterActivity");
@@ -173,6 +188,8 @@ public void WeaponModels_EntityDataInit()
 
 	// StudioHdr offset in gameconf is only relative to the offset of m_hLightingOrigin, in order to make the offset more resilient to game updates
 	g_iOffset_Animating_StudioHdr += lightingOriginOffset;
+	PrintToServer("lightingoriginoffset: %d", lightingOriginOffset);
+	PrintToServer("lightingoriginoffset: %d", lightingOriginOffset);
 }
 
 public int GetPlayerViewModel(int client, int index)
@@ -282,7 +299,7 @@ public int Animating_GetSequenceCount(int animating)
 }
 
 // This function is far to advanced to be cloned
-public int Animating_GetSequenceActivity(int animating, int sequence)
+int Animating_GetSequenceActivity(int animating, int sequence)
 {
 	return SDKCall(g_hSDKCall_Animating_GetSequenceActivity, animating, sequence);
 }
@@ -292,61 +309,8 @@ Address Animating_GetStudioHdrClass(int animating)
 	return view_as<Address>(GetEntData(animating, g_iOffset_Animating_StudioHdr));
 }
 
-Address StudioHdrClass_GetStudioHdrStruct(Address studioHdrClass)
-{
-	return studioHdrClass != Address_Null ? view_as<Address>(LoadFromAddress(studioHdrClass, NumberType_Int32)) : Address_Null;
-}
-
-int StudioHdrGetSequenceCount(Address studioHdrStruct)
-{
-	return LoadFromAddress(studioHdrStruct + view_as<Address>(g_iOffset_StudioHdrStruct_SequenceCount), NumberType_Int32);
-}
-
-enum StudioAnimDesc
-{
-	StudioAnimDesc_Fps = 8,
-	StudioAnimDesc_NumFrames = 16,
-	StudioAnimDesc_NumMovements = 20,
-}
-
-
-// int Animating_GetNumMovements(int animating, int sequence)
-// {
-// 	Address studioHdrStruct = StudioHdrClass_GetStudioHdrStruct(Animating_GetStudioHdrClass(animating));
-	
-// 	Address studioAnimDesc = GetLocalAnimDescription(studioHdrStruct, sequence);
-	
-// 	return StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumMovements);
-// }
-
-
-// This does not count in weight
 float Animating_GetSequenceDuration(int animating, int sequence)
 {
-	Address studioHdrStruct = StudioHdrClass_GetStudioHdrStruct(Animating_GetStudioHdrClass(animating));
-	
-	Address studioAnimDesc = GetLocalAnimDescription(studioHdrStruct, sequence);
-	
-	PrintToServer("%f - %i", StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_Fps), StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumFrames));
-	
-	float cyclesPerSecond = view_as<float>(StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_Fps)) / (StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumFrames) - 1);
-	
-	return cyclesPerSecond != 0.0 ? 1.0 / cyclesPerSecond : 0.0;
-}
-
-
-Address GetLocalAnimDescription(Address studioHdrStruct, int sequence)
-{
-	if (sequence < 0 || sequence >= StudioHdrGetSequenceCount(studioHdrStruct))
-	{
-		sequence = 0;
-	}
-	
-	// 	return (mstudioanimdesc_t *)(((byte *)this) + localanimindex) + i;
-	return studioHdrStruct + view_as<Address>(LoadFromAddress(studioHdrStruct + view_as<Address>(184), NumberType_Int32) + (sequence * 4));
-}
-
-any StudioAnimDesc_GetValue(Address studioAnimDesc, StudioAnimDesc type, NumberType size = NumberType_Int32)
-{
-	return LoadFromAddress(studioAnimDesc + view_as<Address>(type), size);
+	Address studioHdr = Animating_GetStudioHdrClass(animating);
+	return SDKCall(g_hSDKCall_Animating_SequenceDuration, animating, studioHdr, sequence);
 }
