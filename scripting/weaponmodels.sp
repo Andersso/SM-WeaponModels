@@ -582,7 +582,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		{
 			float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
 
-			CreateTimer(sequenceDuration, Timer_SwapViewModel, client, TIMER_FLAG_NO_MAPCHANGE|TIMER_DATA_HNDL_CLOSE);
+			g_ClientInfo[client].ClientInfo_SwapTimer = CreateTimer(sequenceDuration, Timer_SwapViewModel, client, TIMER_FLAG_NO_MAPCHANGE);
 		}
 		else
 		{
@@ -713,8 +713,9 @@ void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 {
 	int swapWeapon;
 
-	// TODO: WTF? Expression always false?
-	if ((g_ClientInfo[client].ClientInfo_ToggleSequence = !g_ClientInfo[client].ClientInfo_ToggleSequence))
+	bool toggle = g_ClientInfo[client].ClientInfo_ToggleSequence = !g_ClientInfo[client].ClientInfo_ToggleSequence;
+
+	if (toggle)
 	{
 		swapWeapon = EntRefToEntIndex(g_bEconomyWeapons ? g_ClientInfo[client].ClientInfo_SwapWeapon : g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapWeapon);
 
