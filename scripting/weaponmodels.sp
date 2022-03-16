@@ -123,6 +123,33 @@ char g_szViewModelClassName[CLASS_NAME_MAX_LENGTH] = "predicted_viewmodel";
 ConVar g_iFrameSkipCount;
 
 
+// enum holster_acts
+// {
+// ACT_VM_HOLSTER	=911,
+// ACT_VM_HOLSTER_DRY	=966,
+// ACT_VM_FLASHLIGHT_HOLSTER	=969,
+// ACT_VM_FLASHLIGHT_HOLSTER_DRY	=970,
+// ACT_VM_BOARD_HOLSTER	=1047,
+// ACT_VM_HOLSTER_PICK	=1058,
+// ACT_VM_HOSE_HOLSTER	= 1082,
+// ACT_VM_HOLSTER_SPECIAL	=1086,
+// ACT_SLAM_STICKWALL_DETONATOR_HOLSTER	=1108,
+// ACT_SLAM_THROW_DETONATOR_HOLSTER	=1125,
+// ACT_SLAM_DETONATOR_HOLSTER	=1136,
+// ACT_RPG_HOLSTER_UNLOADED	=1357,
+// ACT_PRIMARY_VM_HOLSTER	=2384,
+// ACT_SECONDARY_VM_HOLSTER	=2404,
+// ACT_MELEE_VM_HOLSTER	=2422,
+// ACT_PDA_VM_HOLSTER	=2436,
+// ACT_ITEM1_VM_HOLSTER	=2453,
+// ACT_ITEM2_VM_HOLSTER	=2473,
+// ACT_ITEM3_VM_HOLSTER	=2494,
+// ACT_SECONDARY2_VM_HOLSTER	=2511,
+// ACT_MELEE_ALLCLASS_VM_HOLSTER	=2580
+// };
+
+int arraylol[8] = { 911, 966, 969, 970, 1047, 1058, 1082, 1086 };
+
 
 enum struct ClientInfo
 {
@@ -220,6 +247,7 @@ public void OnPluginStart()
 		{
 			//g_szWeaponPrefix = "fa_";
 			// g_szMeleePrefix = "me_";
+
 			#if defined DEBUG
 			PrintToServer("%s: initializing for No More Room in Hell", PLUGIN_NAME);
 			#endif
@@ -476,6 +504,7 @@ public Action OnWeaponSwitch(int client, int weapon)
 			continue;
 		}
 
+
 		g_ClientInfo[client].ClientInfo_SwapWeapon = -1;
 		g_ClientInfo[client].ClientInfo_CustomWeapon = weapon;
 		g_ClientInfo[client].ClientInfo_WeaponIndex = i;
@@ -545,6 +574,7 @@ public int CreateSwapWeapon(int weaponIndex, int client)
 // This algorithm gives me an headache, even though I made it myself. But it's as fast as it can be I hope 
 public int BuildSwapSequenceArray(int swapSequences[MAX_SEQEUENCES], int sequenceCount, int weapon, int index)
 {
+
 	int value = swapSequences[index], swapIndex = -1;
 
 	if (!value)
@@ -608,7 +638,6 @@ public int BuildSwapSequenceArray(int swapSequences[MAX_SEQEUENCES], int sequenc
 
 
 
-
 public void OnWeaponSwitchPost(int client, int weapon)
 {
 	// Callback is sometimes called on disconnected clients
@@ -664,18 +693,25 @@ public void OnWeaponSwitchPost(int client, int weapon)
 			KillTimer(g_ClientInfo[client].ClientInfo_SwapTimer);
 		}
 
+		int exitval = 0;
 		// If there is a holster animation for the swapped weapon,
 		// we need to let the animation finish before we do the view model swap.
-		if (activity == ACT_VM_HOLSTER)
-		{
-			float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
+		PrintToServer("Starting framedelay..");
+		SwapWeapon_FrameDelay( viewModel2, 70, weapon, viewModel1, viewModel2, client);
+		// for ( int i=0; i<8; i++ )
+		// {
+		// 	if ( activity == arraylol[i] )
+		// 	{
+		// 		PrintToServer("this is a holster animation! %d", activity);
+				
+		// 		float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
+		// 		PrintToServer("Creating timer with duration %f...", sequenceDuration);
+		// 		//CreateTimer(sequenceDuration, Timer_SwapViewModel, client, TIMER_FLAG_NO_MAPCHANGE);
+				
+		// 		exitval = 8;
+		// 	}
+		// }
 
-			CreateTimer(sequenceDuration, Timer_SwapViewModel, client, TIMER_FLAG_NO_MAPCHANGE|TIMER_DATA_HNDL_CLOSE);
-		}
-		else
-		{
-			SwapViewModel(client, weapon, viewModel1, viewModel2);
-		}
 	}
 	else
 	{
@@ -693,10 +729,13 @@ Action Timer_SwapViewModel(Handle timer, any data)
 	int client = data;
 
 	// Make sure it's the right timer handle
-	if (g_ClientInfo[client].ClientInfo_SwapTimer != timer)
-	{
-		return;
-	}
+	// if (g_ClientInfo[client].ClientInfo_SwapTimer != timer)
+	// {
+	// 	PrintToServer("incorrect handle..");
+	// 	return;
+	// }
+
+	PrintToServer("swapping model..");
 
 	g_ClientInfo[client].ClientInfo_SwapTimer = INVALID_HANDLE;
 
@@ -720,11 +759,13 @@ Action Timer_SwapViewModel(Handle timer, any data)
 	SwapViewModel(client, weapon, viewModel1, viewModel2);
 }
 
+
 void SwapViewModel(int client, int weapon, int viewModel1, int viewModel2)
 {
+
 	SetEntityVisibility(viewModel1, false);
 	SetEntityVisibility(viewModel2, true);
-	
+
 	if (g_iEngineVersion == Engine_CSGO)
 	{
 		StopParticleEffects(client, viewModel2);
@@ -761,7 +802,7 @@ void SwapViewModel(int client, int weapon, int viewModel1, int viewModel2)
 			if (sequenceCount < MAX_SEQEUENCES)
 			{
 
-				BuildSwapSequenceArray(swapSequences, sequenceCount, weapon);
+				BuildSwapSequenceArray(swapSequences, sequenceCount, weapon, 0);
 
 				g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SequenceCount = sequenceCount;
 				g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapSequences = swapSequences;
@@ -797,6 +838,7 @@ void SwapViewModel(int client, int weapon, int viewModel1, int viewModel2)
 	g_ClientInfo[client].ClientInfo_LastSequenceParity = -1;
 }
 
+
 public void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 {
 	int swapWeapon;
@@ -827,6 +869,7 @@ public void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 
 	SetEntDataEnt2(viewModel, g_iOffset_ViewModelWeapon, swapWeapon, true);
 }
+
 
 public void OnClientPostThinkPost(int client)
 {

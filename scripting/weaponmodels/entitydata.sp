@@ -46,6 +46,7 @@ Handle g_hSDKCall_Entity_UpdateTransmitState; // UpdateTransmitState will stop t
 Handle g_hSDKCall_Animating_GetSequenceActivity;
 Handle g_hSDKCall_WeaponBase_GetHolsterActivity;
 Handle g_hSDKCall_Animating_SequenceDuration;
+Handle g_hSDKCall_BaseCombatWeapon_IsHolstered;
 
 int g_iOffset_Animating_StudioHdr;
 int g_iOffset_StudioHdrStruct_SequenceCount;
@@ -113,6 +114,14 @@ public void WeaponModels_EntityDataInit()
 			SetFailState("Failed to load SDK call \"UpdateTransmitState\"!");
 		}
 
+		StartPrepSDKCall(SDKCall_Entity);
+		PrepSDKCall_SetFromConf(gameConf, SDKConf_Virtual, "BaseCombatWeapon_IsHolstered");
+		PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
+
+		if (!(g_hSDKCall_BaseCombatWeapon_IsHolstered = EndPrepSDKCall()))
+		{
+			SetFailState("Failed to load SDK call \"BaseCombatWeapon_IsHolstered\"!");
+		}
 
 		StartPrepSDKCall(SDKCall_Entity);
 		PrepSDKCall_SetFromConf(gameConf, SDKConf_Signature, "Animating_GetSequenceActivity");
@@ -206,47 +215,80 @@ public bool GetEntityVisibility(int entity){
 //perhaps caused by unknown function overwriting flags after delay
 //temp fix: add frame skip delay to setting viewmodel1's nodraw flag
 //TODO: Find cause and less hacky solution!
-public void SetEntityVisibility_FrameDelay(int entity, bool show, int frames, int weapon)
+public void SwapWeapon_FrameDelay( int whichviewmodel, int frames, int weapon, int viewModel1, int viewModel2, int client)
 {
 	DataPack pack = new DataPack();
 
 	pack.WriteCell(frames);					//frames to skip
-	pack.WriteCell(view_as<int>(show));	
 
-	int entref = EntIndexToEntRef(entity);	//if entities are modified after delay; use references!
+	int entref = EntIndexToEntRef(whichviewmodel);	//if entities are modified after delay; use references!
 	pack.WriteCell(entref);	
 
 	int wepentref = EntIndexToEntRef(weapon);	//if entities are modified after delay; use references!
 	pack.WriteCell(wepentref);
 
-	RequestFrame(NextFrameSetVisibility, pack);
+	int modelindex = GetEntProp(viewModel1, Prop_Send, "m_nModelIndex");
+	pack.WriteCell(modelindex);	
+	pack.WriteCell(viewModel1);	
+	pack.WriteCell(viewModel2);	
+	pack.WriteCell(client);	
+
+	RequestFrame( RecurseFrameWeaponSwap, pack);
 }
 
 
-public void NextFrameSetVisibility(DataPack dataPackHandle)
+public void RecurseFrameWeaponSwap(DataPack dataPackHandle)
 {
 	ResetPack(dataPackHandle);
  	int framesToSkip = dataPackHandle.ReadCell();
-	bool show = dataPackHandle.ReadCell();
-	int entity = EntRefToEntIndex(	dataPackHandle.ReadCell()	);
+	int whichviewmodel = EntRefToEntIndex(	dataPackHandle.ReadCell()	);
 	int weapon = EntRefToEntIndex(	dataPackHandle.ReadCell()	);
+	int modelindex = dataPackHandle.ReadCell();
+	int viewModel1 = dataPackHandle.ReadCell();
+	int viewModel2 = dataPackHandle.ReadCell();
+	int client = dataPackHandle.ReadCell();
 
- 	if (framesToSkip > 0)							//recursive frame skip	
+	
+ 	if (framesToSkip > 1)							//recursive frame skip	
 	{
-		if ( GetEntityVisibility(entity) != show ) 	//check before setting, to reduce potential unnecessary networking.
-		{
-		SetEntityVisibility(entity, show);
-		}
-
-		int activity = Animating_GetSequenceActivity(weapon, 172);
+		// if ( GetEntityVisibility(entity) != show ) 	//check before setting, to reduce potential unnecessary networking.
+		// {
+		// SetEntityVisibility(entity, show);
+		// }
+		// PrintToServer("doing shit");
+		int newmodelindexnew = GetEntProp(viewModel1, Prop_Send, "m_nModelIndex");
 		
-		PrintToChatAll("Holster Activity: %d", activity); 
+		if ( modelindex != newmodelindexnew){
+			PrintToServer("New Model: %d , old model: %d", newmodelindexnew, modelindex);
+
+			ResetPack(dataPackHandle);
+ 			dataPackHandle.WriteCell( 0 );
+
+			SwapViewModel(client, weapon, viewModel1, viewModel2);
+
+			DataPack pack2 = new DataPack();
+			pack2.WriteCell(viewModel1);
+			pack2.WriteCell(0);
+			RequestFrame( NextFrameSetEntityVisibility, pack2);
+		}
+		else{
+		// PrintToServer("ModelIndex: %d", modelindex); 
 		ResetPack(dataPackHandle);
  		dataPackHandle.WriteCell( framesToSkip-1 );
 
- 		RequestFrame(NextFrameSetVisibility, dataPackHandle);
+ 		RequestFrame(RecurseFrameWeaponSwap, dataPackHandle);
+		}
  		return; 
 	}
+}
+
+public void NextFrameSetEntityVisibility(DataPack dataPackHandle)
+{
+	ResetPack(dataPackHandle);
+	int entity = dataPackHandle.ReadCell();
+	int show = dataPackHandle.ReadCell();
+	SetEntityVisibility(entity, show);
+	SDKCall(g_hSDKCall_Entity_UpdateTransmitState, entity);
 }
 
 
@@ -303,9 +345,6 @@ float Animating_GetSequenceDuration(int animating, int sequence)
 {
 	Address studioHdr = Animating_GetStudioHdrClass(animating);
 	return SDKCall(g_hSDKCall_Animating_SequenceDuration, animating, studioHdr, sequence);
-<<<<<<< HEAD
-}
-=======
 }
 
 // Address StudioHdrClass_GetStudioHdrStruct(Address studioHdrClass)
@@ -349,4 +388,3 @@ float Animating_GetSequenceDuration(int animating, int sequence)
 // {
 // 	return LoadFromAddress(studioAnimDesc + view_as<Address>(type), size);
 // }
->>>>>>> AndersRepo/feature/holster_animation_support
