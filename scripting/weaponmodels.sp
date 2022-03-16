@@ -134,6 +134,7 @@ enum struct ClientInfo
 	bool ClientInfo_ToggleSequence;
 	int ClientInfo_LastSequenceParity;
 	int ClientInfo_SwapWeapon; // This property is used when g_bEconomyWeapons is true
+	Handle ClientInfo_SwapTimer;
 }
 
 ClientInfo g_ClientInfo[MAXPLAYERS + 1];
@@ -655,90 +656,26 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex)
 	{
 		int sequence = GetEntProp(weapon, Prop_Send, "m_nSequence");
-		int activity = Animating_GetSequenceActivity(weapon, GetEntProp(weapon, Prop_Send, "m_nSequence"));
-		if (activity == 912)
+		int activity = Animating_GetSequenceActivity(weapon, sequence);
+
+		// Kill existing timer (if any)
+		if (g_ClientInfo[client].ClientInfo_SwapTimer != INVALID_HANDLE)
+		{
+			KillTimer(g_ClientInfo[client].ClientInfo_SwapTimer);
+		}
+
+		// If there is a holster animation for the swapped weapon,
+		// we need to let the animation finish before we do the view model swap.
+		if (activity == ACT_VM_HOLSTER)
 		{
 			float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
-			PrintToServer("Activity is unholster!!!! (912) duration: %f", sequenceDuration);
-		}
-		if (activity == 911)
-		{
-			float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
-			PrintToServer("Activity is holster!!!! (911) duration: %f", sequenceDuration);
-		}
 
-
-		SetEntityVisibility_FrameDelay(viewModel1, false, 60, weapon);
-
-		SetEntityVisibility(viewModel2, true);
-
-		if (g_iEngineVersion == Engine_CSGO)
-		{
-			StopParticleEffects(client, viewModel2);
-		}
-
-		if (g_bPredictedWeaponSwitch)
-		{
-			g_ClientInfo[client].ClientInfo_DrawSequence = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
-
-			// Switch to an invalid sequence to prevent it from playing sounds before UpdateTransmitStateTime() is called
-			SetEntData(viewModel1, g_iOffset_ViewModelSequence, -1, _, true);
+			CreateTimer(sequenceDuration, Timer_SwapViewModel, client, TIMER_FLAG_NO_MAPCHANGE|TIMER_DATA_HNDL_CLOSE);
 		}
 		else
 		{
-			SetEntData(viewModel2, g_iOffset_ViewModelSequence, GetEntData(viewModel1, g_iOffset_ViewModelSequence), _, true);
-			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
+			SwapViewModel(client, weapon, viewModel1, viewModel2);
 		}
-
-		SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
-
-		SetEntityModel(weapon, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel);
-
-		if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SequenceCount == -1)
-		{
-			int sequenceCount = Animating_GetSequenceCount(weapon);
-
-			if (sequenceCount > 0)
-			{
-				int swapSequences[MAX_SEQEUENCES];
-
-				if (sequenceCount < MAX_SEQEUENCES)
-				{
-
-					BuildSwapSequenceArray(swapSequences, sequenceCount, weapon, 0);
-
-					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SequenceCount = sequenceCount;
-					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapSequences = swapSequences;
-				}
-				else
-				{
-					LogError("View model \"%s\" is having too many sequences! (Max %i, is %i) - Increase value of MAX_SEQEUENCES in plugin",
-						g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel,
-						MAX_SEQEUENCES,
-						sequenceCount);
-				}
-			}
-			else
-			{
-				for (int i = 0; i < MAX_SEQEUENCES; i++)
-				{
-					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapSequences[i] = -1;
-				}
-
-				LogError("Failed to get sequence count for weapon using model \"%s\" - Animations may not work as expected",
-					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel);
-			}
-		}
-
-		SetEntData(viewModel1, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex, _, true);
-		SetEntData(viewModel2, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex, _, true);
-		
-		SetEntDataFloat(viewModel2, g_iOffset_ViewModelPlaybackRate, GetEntDataFloat(viewModel1, g_iOffset_ViewModelPlaybackRate), true);
-
-		// FIXME: Why am I calling this? - good question lol
-		ToggleViewModelWeapon(client, viewModel2, weaponIndex);
-		
-		g_ClientInfo[client].ClientInfo_LastSequenceParity = -1;
 	}
 	else
 	{
@@ -749,6 +686,115 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	{
 		SetEntData(weapon, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_WorldModelIndex, _, true);
 	}
+}
+
+Action Timer_SwapViewModel(Handle timer, any data)
+{
+	int client = data;
+
+	// Make sure it's the right timer handle
+	if (g_ClientInfo[client].ClientInfo_SwapTimer != timer)
+	{
+		return;
+	}
+
+	g_ClientInfo[client].ClientInfo_SwapTimer = INVALID_HANDLE;
+
+	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client].ClientInfo_ViewModels[0]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client].ClientInfo_ViewModels[1]);
+
+	if (viewModel1 == -1 || viewModel2 == -1)
+	{
+		return;
+	}
+
+	// TODO: Perhaps this should be stored as an entity reference,
+	// I don't really see why this is stored as an entity index.
+	int weapon = g_ClientInfo[client].ClientInfo_CustomWeapon;
+
+	if (weapon == 0)
+	{
+		return;
+	}
+
+	SwapViewModel(client, weapon, viewModel1, viewModel2);
+}
+
+void SwapViewModel(int client, int weapon, int viewModel1, int viewModel2)
+{
+	SetEntityVisibility(viewModel1, false);
+	SetEntityVisibility(viewModel2, true);
+	
+	if (g_iEngineVersion == Engine_CSGO)
+	{
+		StopParticleEffects(client, viewModel2);
+	}
+
+	if (g_bPredictedWeaponSwitch)
+	{
+		g_ClientInfo[client].ClientInfo_DrawSequence = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
+
+		// Switch to an invalid sequence to prevent it from playing sounds before UpdateTransmitStateTime() is called
+		SetEntData(viewModel1, g_iOffset_ViewModelSequence, -1, _, true);
+	}
+	else
+	{
+		SetEntData(viewModel2, g_iOffset_ViewModelSequence, GetEntData(viewModel1, g_iOffset_ViewModelSequence), _, true);
+
+		SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
+	}
+
+	SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
+
+	int weaponIndex = g_ClientInfo[client].ClientInfo_WeaponIndex;
+
+	SetEntityModel(weapon, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel);
+
+	if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SequenceCount == -1)
+	{
+		int sequenceCount = Animating_GetSequenceCount(weapon);
+
+		if (sequenceCount > 0)
+		{
+			int swapSequences[MAX_SEQEUENCES];
+
+			if (sequenceCount < MAX_SEQEUENCES)
+			{
+
+				BuildSwapSequenceArray(swapSequences, sequenceCount, weapon);
+
+				g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SequenceCount = sequenceCount;
+				g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapSequences = swapSequences;
+			}
+			else
+			{
+				LogError("View model \"%s\" is having too many sequences! (Max %i, is %i) - Increase value of MAX_SEQEUENCES in plugin",
+					g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel,
+					MAX_SEQEUENCES,
+					sequenceCount);
+			}
+		}
+		else
+		{
+			for (int i = 0; i < MAX_SEQEUENCES; i++)
+			{
+				g_WeaponModelInfo[weaponIndex].WeaponModelInfo_SwapSequences[i] = -1;
+			}
+
+			LogError("Failed to get sequence count for weapon using model \"%s\" - Animations may not work as expected",
+				g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModel);
+		}
+	}
+
+	SetEntData(viewModel1, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex, _, true);
+	SetEntData(viewModel2, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex, _, true);
+	
+	SetEntDataFloat(viewModel2, g_iOffset_ViewModelPlaybackRate, GetEntDataFloat(viewModel1, g_iOffset_ViewModelPlaybackRate), true);
+
+	// FIXME: Why am I calling this?
+	ToggleViewModelWeapon(client, viewModel2, weaponIndex);
+	
+	g_ClientInfo[client].ClientInfo_LastSequenceParity = -1;
 }
 
 public void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)

@@ -139,16 +139,6 @@ public void WeaponModels_EntityDataInit()
 			SetFailState("Failed to load SDK call \"Animating_SequenceDuration\"!");
 		}
 
-		//holster activity
-		StartPrepSDKCall(SDKCall_Entity);
-		PrepSDKCall_SetFromConf(gameConf, SDKConf_Virtual, "NMRiH_WeaponBase_GetHolsterActivity");
-		PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_Plain);
-
-		if (!(g_hSDKCall_WeaponBase_GetHolsterActivity = EndPrepSDKCall()))
-		{
-			SetFailState("Failed to load SDK call \"WeaponBase_GetHolsterActivity\"!");
-		}
-
 		InitGameConfOffset(gameConf, g_iOffset_Animating_StudioHdr, "Animating_StudioHdr");
 		InitGameConfOffset(gameConf, g_iOffset_StudioHdrStruct_SequenceCount, "StudioHdrStruct_SequenceCount");
 		InitGameConfOffset(gameConf, g_iOffset_VirtualModelStruct_SequenceVector_Size, "VirtualModelStruct_SequenceVector_Size");
@@ -313,4 +303,50 @@ float Animating_GetSequenceDuration(int animating, int sequence)
 {
 	Address studioHdr = Animating_GetStudioHdrClass(animating);
 	return SDKCall(g_hSDKCall_Animating_SequenceDuration, animating, studioHdr, sequence);
+<<<<<<< HEAD
 }
+=======
+}
+
+// Address StudioHdrClass_GetStudioHdrStruct(Address studioHdrClass)
+// {
+// 	return studioHdrClass != Address_Null ? view_as<Address>(LoadFromAddress(studioHdrClass, NumberType_Int32)) : Address_Null;
+// }
+
+// int StudioHdrGetSequenceCount(Address studioHdrStruct)
+// {
+// 	return LoadFromAddress(studioHdrStruct + view_as<Address>(g_iOffset_StudioHdrStruct_SequenceCount), NumberType_Int32);
+// }
+
+// enum StudioAnimDesc
+// {
+// 	StudioAnimDesc_Fps = 8,
+// 	StudioAnimDesc_NumFrames = 16,
+// 	StudioAnimDesc_NumMovements = 20,
+// }
+
+// int Animating_GetNumMovements(int animating, int sequence)
+// {
+// 	Address studioHdrStruct = StudioHdrClass_GetStudioHdrStruct(Animating_GetStudioHdrClass(animating));
+	
+// 	Address studioAnimDesc = GetLocalAnimDescription(studioHdrStruct, sequence);
+	
+// 	return StudioAnimDesc_GetValue(studioAnimDesc, StudioAnimDesc_NumMovements);
+// }
+
+// Address GetLocalAnimDescription(Address studioHdrStruct, int sequence)
+// {
+// 	if (sequence < 0 || sequence >= StudioHdrGetSequenceCount(studioHdrStruct))
+// 	{
+// 		sequence = 0;
+// 	}
+	
+// 	// 	return (mstudioanimdesc_t *)(((byte *)this) + localanimindex) + i;
+// 	return studioHdrStruct + view_as<Address>(LoadFromAddress(studioHdrStruct + view_as<Address>(184), NumberType_Int32) + (sequence * 4));
+// }
+
+// any StudioAnimDesc_GetValue(Address studioAnimDesc, StudioAnimDesc type, NumberType size = NumberType_Int32)
+// {
+// 	return LoadFromAddress(studioAnimDesc + view_as<Address>(type), size);
+// }
+>>>>>>> AndersRepo/feature/holster_animation_support
