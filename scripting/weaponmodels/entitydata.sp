@@ -44,7 +44,7 @@
 
 Handle g_hSDKCall_Entity_UpdateTransmitState; // UpdateTransmitState will stop the view model from transmitting if EF_NODRAW flag is present
 Handle g_hSDKCall_Animating_GetSequenceActivity;
-Handle g_hSDKCall_Animating_SequenceDuration;
+// Handle g_hSDKCall_Animating_SequenceDuration;
 
 int g_iOffset_Animating_StudioHdr;
 int g_iOffset_StudioHdrStruct_SequenceCount;
@@ -121,17 +121,17 @@ void WeaponModels_EntityDataInit()
 
 		// float CBaseAnimating::SequenceDuration( CStudioHdr *pStudioHdr, int iSequence )
 		// See https://github.com/ValveSoftware/source-sdk-2013/blob/0d8dceea4310fde5706b3ce1c70609d72a38efdf/mp/src/game/server/baseanimating.cpp#L938
-		StartPrepSDKCall(SDKCall_Entity);
-		PrepSDKCall_SetFromConf(gameConf, SDKConf_Signature, "Animating_SequenceDuration");
+		// StartPrepSDKCall(SDKCall_Entity);
+		// PrepSDKCall_SetFromConf(gameConf, SDKConf_Signature, "Animating_SequenceDuration");
 
-		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CStudioHdr *pStudioHdr
-		PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // int iSequence
-		PrepSDKCall_SetReturnInfo(SDKType_Float, SDKPass_Plain);
+		// PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // CStudioHdr *pStudioHdr
+		// PrepSDKCall_AddParameter(SDKType_PlainOldData, SDKPass_Plain); // int iSequence
+		// PrepSDKCall_SetReturnInfo(SDKType_Float, SDKPass_Plain);
 
-		if (!(g_hSDKCall_Animating_SequenceDuration = EndPrepSDKCall()))
-		{
-			SetFailState("Failed to load SDK call \"Animating_SequenceDuration\"!");
-		}
+		// if (!(g_hSDKCall_Animating_SequenceDuration = EndPrepSDKCall()))
+		// {
+		// 	SetFailState("Failed to load SDK call \"Animating_SequenceDuration\"!");
+		// }
 
 		InitGameConfOffset(gameConf, g_iOffset_Animating_StudioHdr, "Animating_StudioHdr");
 		InitGameConfOffset(gameConf, g_iOffset_StudioHdrStruct_SequenceCount, "StudioHdrStruct_SequenceCount");
@@ -230,16 +230,16 @@ int Animating_GetSequenceActivity(int animating, int sequence)
 	return SDKCall(g_hSDKCall_Animating_GetSequenceActivity, animating, sequence);
 }
 
-Address Animating_GetStudioHdrClass(int animating)
-{
-	return view_as<Address>(GetEntData(animating, g_iOffset_Animating_StudioHdr));
-}
+// Address Animating_GetStudioHdrClass(int animating)
+// {
+// 	return view_as<Address>(GetEntData(animating, g_iOffset_Animating_StudioHdr));
+// }
 
-float Animating_GetSequenceDuration(int animating, int sequence)
-{
-	Address studioHdr = Animating_GetStudioHdrClass(animating);
-	return SDKCall(g_hSDKCall_Animating_SequenceDuration, animating, studioHdr, sequence);
-}
+// float Animating_GetSequenceDuration(int animating, int sequence)
+// {
+// 	Address studioHdr = Animating_GetStudioHdrClass(animating);
+// 	return SDKCall(g_hSDKCall_Animating_SequenceDuration, animating, studioHdr, sequence);
+// }
 
 // Address StudioHdrClass_GetStudioHdrStruct(Address studioHdrClass)
 // {

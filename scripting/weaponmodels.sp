@@ -83,7 +83,8 @@ enum struct ClientInfo
 	bool ClientInfo_ToggleSequence;
 	int ClientInfo_LastSequenceParity;
 	int ClientInfo_SwapWeapon; // This property is used when g_bEconomyWeapons is true
-	Handle ClientInfo_SwapTimer;
+	bool ClientInfo_ViewModelSwapped;
+	int ClientInfo_HolsteredViewModelIndex;
 }
 
 ClientInfo g_ClientInfo[MAXPLAYERS + 1];
@@ -414,6 +415,10 @@ public Action OnWeaponSwitch(int client, int weapon)
 			g_WeaponModelInfo[i].WeaponModelInfo_SwapWeapon = EntIndexToEntRef(CreateSwapWeapon(i, client));
 		}
 
+		// In case there is a holster animation, we will have to wait for the swapped weapon to be holstered.
+		g_ClientInfo[client].ClientInfo_ViewModelSwapped = false;
+		g_ClientInfo[client].ClientInfo_HolsteredViewModelIndex = GetEntData(viewModel1, g_iOffset_EntityModelIndex);
+
 		return Plugin_Continue;
 	}
 
@@ -565,31 +570,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		return;
 	}
 
-	if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex)
-	{
-		int sequence = GetEntProp(weapon, Prop_Send, "m_nSequence");
-		int activity = Animating_GetSequenceActivity(weapon, sequence);
-
-		// Kill existing timer (if any)
-		if (g_ClientInfo[client].ClientInfo_SwapTimer != INVALID_HANDLE)
-		{
-			KillTimer(g_ClientInfo[client].ClientInfo_SwapTimer);
-		}
-
-		// If there is a holster animation for the swapped weapon,
-		// we need to let the animation finish before we do the view model swap.
-		if (activity == ACT_VM_HOLSTER)
-		{
-			float sequenceDuration = Animating_GetSequenceDuration(weapon, sequence);
-
-			g_ClientInfo[client].ClientInfo_SwapTimer = CreateTimer(sequenceDuration, Timer_SwapViewModel, client, TIMER_FLAG_NO_MAPCHANGE);
-		}
-		else
-		{
-			SwapViewModel(client, weapon, viewModel1, viewModel2);
-		}
-	}
-	else
+	if (!g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex)
 	{
 		g_ClientInfo[client].ClientInfo_CustomWeapon = 0;
 	}
@@ -598,38 +579,6 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	{
 		SetEntData(weapon, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[weaponIndex].WeaponModelInfo_WorldModelIndex, _, true);
 	}
-}
-
-Action Timer_SwapViewModel(Handle timer, any data)
-{
-	int client = data;
-
-	// Make sure it's the right timer handle
-	if (g_ClientInfo[client].ClientInfo_SwapTimer != timer)
-	{
-		return;
-	}
-
-	g_ClientInfo[client].ClientInfo_SwapTimer = INVALID_HANDLE;
-
-	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client].ClientInfo_ViewModels[0]);
-	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client].ClientInfo_ViewModels[1]);
-
-	if (viewModel1 == -1 || viewModel2 == -1)
-	{
-		return;
-	}
-
-	// TODO: Perhaps this should be stored as an entity reference,
-	// I don't really see why this is stored as an entity index.
-	int weapon = g_ClientInfo[client].ClientInfo_CustomWeapon;
-
-	if (weapon == 0)
-	{
-		return;
-	}
-
-	SwapViewModel(client, weapon, viewModel1, viewModel2);
 }
 
 void SwapViewModel(int client, int weapon, int viewModel1, int viewModel2)
@@ -749,7 +698,8 @@ public void OnClientPostThinkPost(int client)
 		return;
 	}
 
-	if (g_ClientInfo[client].ClientInfo_CustomWeapon == 0)
+	int weapon = g_ClientInfo[client].ClientInfo_CustomWeapon;
+	if (weapon == 0)
 	{
 		return;
 	}
@@ -760,6 +710,18 @@ public void OnClientPostThinkPost(int client)
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
 		return;
+	}
+
+	if (!g_ClientInfo[client].ClientInfo_ViewModelSwapped)
+	{
+		int currentViewModelIndex = GetEntData(viewModel1, g_iOffset_EntityModelIndex);
+
+		// The view model index has changed, which means the old weapon is holstered, do the view model swap.
+		if (currentViewModelIndex != g_ClientInfo[client].ClientInfo_HolsteredViewModelIndex)
+		{
+			g_ClientInfo[client].ClientInfo_ViewModelSwapped = true;
+			SwapViewModel(client, weapon, viewModel1, viewModel2);
+		}
 	}
 
 	int sequence = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
