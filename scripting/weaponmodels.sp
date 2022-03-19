@@ -570,7 +570,18 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		return;
 	}
 
-	if (!g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex)
+	if (g_WeaponModelInfo[weaponIndex].WeaponModelInfo_ViewModelIndex)
+	{
+		int currentViewModelIndex = GetEntData(viewModel1, g_iOffset_EntityModelIndex);
+
+		// The view model index has changed, which means the old weapon is holstered, do the view model swap.
+		if (currentViewModelIndex != g_ClientInfo[client].ClientInfo_HolsteredViewModelIndex)
+		{
+			g_ClientInfo[client].ClientInfo_ViewModelSwapped = true;
+			SwapViewModel(client, weapon, viewModel1, viewModel2);
+		}
+	}
+	else
 	{
 		g_ClientInfo[client].ClientInfo_CustomWeapon = 0;
 	}
