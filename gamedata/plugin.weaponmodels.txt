@@ -38,8 +38,49 @@
 				"windows"	"\x55\x8B\xEC\x83\x7D\x08\xFF\x56\x8B\xF1\x74\x4E\x80\xBE"
 				"linux"		"@_ZN14CBaseAnimating19GetSequenceActivityEi"
 			}
+			"Animating_SequenceDuration"
+			{
+				"windows"	"\x55\x8B\xEC\x56\x8B\x75\x08\x57\x8B\xF9\x85\xF6\x75\x2D\x8B\x47\x5C"
+				"linux"		"@_ZN14CBaseAnimating16SequenceDurationEP10CStudioHdri"
+			}
 		}
 	}
+	"nmrih"
+	{
+		"Offsets"
+		{
+			"Entity_UpdateTransmitState"
+			{
+				"windows"	"21"
+				"linux"		"22"
+			}
+
+			"Animating_StudioHdr" //?? get private pointer to m_pStudioHdr updated studiomdl cache
+			{
+				"windows"	"60"
+				"linux"		"60"
+			}
+			"NMRiH_WeaponBase_GetHolsterActivity" //?? get private pointer to m_pStudioHdr updated studiomdl cache
+			{
+				"windows"	"379"
+				"linux"		"380"
+			}
+		}
+		"Signatures"
+		{
+			"Animating_GetSequenceActivity" 
+			{
+				"windows"	"\x55\x8B\xEC\x53\x8B\x5D\x08\x57\x8B\xF9\x83\xFB\xFF\x75\x08\x5F"
+				"linux"		"@_ZN14CBaseAnimating19GetSequenceActivityEi"
+			}
+			"Animating_SequenceDuration"
+			{
+				"windows"	"\x55\x8B\xEC\x56\x8B\x75\x08\x57\x8B\xF9\x85\xF6\x75\x2D\x8B\x47\x5C"
+				"linux"		"@_ZN14CBaseAnimating16SequenceDurationEP10CStudioHdri"
+			}
+		}
+	}
+
 	"csgo"
 	{
 		"Offsets"

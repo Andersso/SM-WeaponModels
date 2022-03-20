@@ -52,7 +52,7 @@ void LoadConfig()
 				for (int i = nextIndex; i < MAX_CUSTOM_WEAPONS; i++)
 				{
 					// Select indexes of status free or config
-					if (g_WeaponModelInfo[i][WeaponModelInfo_Status] < WeaponModelInfoStatus_API)
+					if (g_WeaponModelInfo[i].Status < WeaponModelInfoStatus_API)
 					{
 						weaponIndex = i;
 
@@ -76,7 +76,7 @@ void LoadConfig()
 				{
 					defIndex = -1;
 
-					strcopy(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ClassName], CLASS_NAME_MAX_LENGTH, buffer);
+					strcopy(g_WeaponModelInfo[weaponIndex].ClassName, CLASS_NAME_MAX_LENGTH, buffer);
 				}
 				else if (defIndex < 0)
 				{
@@ -85,23 +85,19 @@ void LoadConfig()
 					continue;
 				}
 
-				g_WeaponModelInfo[weaponIndex][WeaponModelInfo_DefIndex] = defIndex;
-
-				#if defined DEBUG_WEAPONSWAP
-				//CleanUpSwapWeapon(weaponIndex);
-				#endif
+				g_WeaponModelInfo[weaponIndex].DefIndex = defIndex;
 				
-				keyValues.GetString("ViewModel", g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel], PLATFORM_MAX_PATH + 1);
-				keyValues.GetString("WorldModel", g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModel], PLATFORM_MAX_PATH + 1);
+				keyValues.GetString("ViewModel", g_WeaponModelInfo[weaponIndex].ViewModel, PLATFORM_MAX_PATH + 1);
+				keyValues.GetString("WorldModel", g_WeaponModelInfo[weaponIndex].WorldModel, PLATFORM_MAX_PATH + 1);
 
 				PrecacheWeaponInfo(weaponIndex);
 
-				g_WeaponModelInfo[weaponIndex][WeaponModelInfo_TeamNum] = KvGetNum(keyValues, "TeamNum");
-				g_WeaponModelInfo[weaponIndex][WeaponModelInfo_BlockLAW] = KvGetNum(keyValues, "BlockLAW") > 0;
+				g_WeaponModelInfo[weaponIndex].TeamNum = KvGetNum(keyValues, "TeamNum");
+				g_WeaponModelInfo[weaponIndex].BlockLAW = KvGetNum(keyValues, "BlockLAW") > 0;
 
-				g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SequenceCount] = -1;
+				g_WeaponModelInfo[weaponIndex].SequenceCount = -1;
 
-				g_WeaponModelInfo[weaponIndex][WeaponModelInfo_Status] = WeaponModelInfoStatus_Config;
+				g_WeaponModelInfo[weaponIndex].Status = WeaponModelInfoStatus_Config;
 
 				nextIndex = weaponIndex + 1;
 			}

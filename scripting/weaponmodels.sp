@@ -18,7 +18,48 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+/* TODO nmrih:
 
+ * Find what's causing nodraw flag overwrite in SetEntityVisibility, find a better fix than to delay frames
+	HINT: 	This is likely caused by a holster animation, and subsequent unholster of new weapon
+			This follows up nicely in the following issue:
+ * Switching a weapon doesn't immediately play the weapon selection animation; delay and singly janky movement at switch
+					m_nSequence recording:
+					4 (hands idle01)
+	switch superx3:	4->1 (superx idle01dry)
+					1->6 (superx unholster)
+					6->0 (superx idle01)
+	switch back to hands:
+				0	 to 7	
+				0	 to 7	
+				7	 to 4	
+				7	 to 4	
+				4	 to 0	
+				4	 to 0	
+				0	 to 4	
+				0	 to 4	
+	As you can see, this looks it would be janky, and indeed, that is the case in game
+
+ * Transition code to new sourcemod syntax
+ * Find way to verify nmrih spectator status in OnClientSpawnPost
+ 
+ * Feature: more viewmodel support ( such as for melees, items, tools )
+ 
+ * Optional: (gun)sound overrides
+			gun feel is heavily influenced by its sounds. Custom sounds may elevate immersion drastically
+			alas, this may be impossible
+ * Optional: per-client toggle and/or permissions. Could be fun for some kind of ingame shop.
+ 
+ * current:  check if can do 10 frames, repeating if fail, for viewmodel1
+ *			 weapon switch fade in/out
+ 			 and/or hide viewmodel2 after time | weapon holster sequence complete
+ *			 I need a global variable storing weapon visibility status
+
+ * Changes:
+ * 
+ * plugin is reloaded while players are ingame.
+
+*/
 // TODO:
 // Test L4D1/L4D2
 // Toggle animation seems to bug on some rare occasions
@@ -42,7 +83,7 @@
 #include <sdkhooks>
 
 #define PLUGIN_NAME "Custom Weapon Models"
-#define PLUGIN_VERSION "1.2"
+#define PLUGIN_VERSION "1.3"
 
 #include "weaponmodels/consts.sp"
 #include "weaponmodels/entitydata.sp"
@@ -53,7 +94,7 @@
 Plugin myinfo =
 {
 	name        = PLUGIN_NAME,
-	author      = "Andersso",
+	author      = "Andersso, Thijs",
 	description = "Change any weapon model",
 	version     = PLUGIN_VERSION,
 	url         = "http://www.sourcemod.net/"
@@ -68,24 +109,37 @@ bool g_bEconomyWeapons = false;
 // This value should be true if view model offsets doesn't differ between different weapons (In this case only CS:GO)
 bool g_bViewModelOffsetIndependent = false;
 
-EngineVersion g_iEngineVersion;
-
-char g_szViewModelClassName[CLASS_NAME_MAX_LENGTH] = "predicted_viewmodel";
-char g_szWeaponPrefix[CLASS_NAME_MAX_LENGTH] = "weapon_";
-
-enum ClientInfo
+enum Games
 {
-	ClientInfo_ViewModels[2],
-	ClientInfo_LastSequence,
-	ClientInfo_CustomWeapon,
-	ClientInfo_DrawSequence,
-	ClientInfo_WeaponIndex,
-	bool:ClientInfo_ToggleSequence,
-	ClientInfo_LastSequenceParity,
-	ClientInfo_SwapWeapon // This property is used when g_bEconomyWeapons is true
+	Game_Unknown,
+	Game_DODS,
+	Game_TF2,
+	Game_L4D,
+	Game_L4D2,
+	Game_Portal2,
+	Game_CSGO,
+	Game_NMRIH
 };
 
-int g_ClientInfo[MAXPLAYERS + 1][ClientInfo];
+Games g_Game;
+
+char g_szViewModelClassName[CLASS_NAME_MAX_LENGTH] = "predicted_viewmodel";
+
+enum struct ClientInfo
+{
+	int ViewModels[2];
+	int LastSequence;
+	int CustomWeapon;
+	int DrawSequence;
+	int WeaponIndex;
+	bool ToggleSequence;
+	int LastSequenceParity;
+	int SwapWeapon; // This property is used when g_bEconomyWeapons is true
+	bool ViewModelSwapped;
+	int HolsteredViewModelIndex;
+}
+
+ClientInfo g_ClientInfo[MAXPLAYERS + 1];
 
 enum WeaponModelInfoStatus
 {
@@ -94,24 +148,24 @@ enum WeaponModelInfoStatus
 	WeaponModelInfoStatus_API
 };
 
-enum WeaponModelInfo
+enum struct WeaponModelInfo
 {
-	WeaponModelInfo_DefIndex,
-	WeaponModelInfo_SwapWeapon, // This property is used when g_bEconomyWeapons is false
-	WeaponModelInfo_SwapSequences[MAX_SEQEUENCES],
-	WeaponModelInfo_SequenceCount,
-	Handle:WeaponModelInfo_Forward,
-	String:WeaponModelInfo_ClassName[CLASS_NAME_MAX_LENGTH + 1],
-	String:WeaponModelInfo_ViewModel[PLATFORM_MAX_PATH + 1],
-	String:WeaponModelInfo_WorldModel[PLATFORM_MAX_PATH + 1],
-	WeaponModelInfo_ViewModelIndex,
-	WeaponModelInfo_WorldModelIndex,
-	WeaponModelInfo_TeamNum,
-	bool:WeaponModelInfo_BlockLAW,
-	WeaponModelInfoStatus:WeaponModelInfo_Status
-};
+	int DefIndex;
+	int SwapWeapon; // This property is used when g_bEconomyWeapons is false
+	int SwapSequences[MAX_SEQEUENCES];
+	int SequenceCount;
+	Handle Forward;
+	char ClassName[CLASS_NAME_MAX_LENGTH + 1];
+	char ViewModel[PLATFORM_MAX_PATH + 1];
+	char WorldModel[PLATFORM_MAX_PATH + 1];
+	int ViewModelIndex;
+	int WorldModelIndex;
+	int TeamNum;
+	bool BlockLAW;
+	WeaponModelInfoStatus Status;
+}
 
-int g_WeaponModelInfo[MAX_CUSTOM_WEAPONS][WeaponModelInfo];
+WeaponModelInfo g_WeaponModelInfo[MAX_CUSTOM_WEAPONS];
 
 #include "weaponmodels/config.sp"
 #include "weaponmodels/csgo.sp"
@@ -137,8 +191,8 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 void PrecacheWeaponInfo(int weaponIndex)
 {
-	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex] = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
-	g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModelIndex] = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModel]);
+	g_WeaponModelInfo[weaponIndex].ViewModelIndex = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex].ViewModel);
+	g_WeaponModelInfo[weaponIndex].WorldModelIndex = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex].WorldModel);
 }
 
 int PrecacheWeaponInfo_PrecahceModel(const char[] model)
@@ -148,7 +202,7 @@ int PrecacheWeaponInfo_PrecahceModel(const char[] model)
 
 void CleanUpSwapWeapon(int weaponIndex)
 {
-	int swapWeapon = EntRefToEntIndex(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
+	int swapWeapon = EntRefToEntIndex(g_WeaponModelInfo[weaponIndex].SwapWeapon);
 
 	if (swapWeapon > 0)
 	{
@@ -161,28 +215,61 @@ public void OnPluginStart()
 	CreateConVar("sm_weaponmodels_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
 	WeaponModels_ConfigInit();
-	
-	switch (g_iEngineVersion = GetEngineVersion())
+
+	switch (GetEngineVersion())
 	{
 		case Engine_DODS:
 		{
 			g_szViewModelClassName = "dod_viewmodel";
+
+			g_Game = Game_DODS;
 		}
 		case Engine_TF2:
 		{
 			g_szViewModelClassName = "tf_viewmodel";
-			g_szWeaponPrefix = "tf_weapon_";
+
+			g_Game = Game_TF2;
 		}
-		case Engine_Left4Dead, Engine_Left4Dead2, Engine_Portal2:
+		case Engine_Left4Dead:
 		{
 			g_bPredictedWeaponSwitch = true;
+
+			g_Game = Game_L4D;
+		}
+		case Engine_Left4Dead2:
+		{
+			g_bPredictedWeaponSwitch = true;
+
+			g_Game = Game_L4D2;
+		}
+		case Engine_Portal2:
+		{
+			g_bPredictedWeaponSwitch = true;
+
+			g_Game = Game_Portal2;
 		}
 		case Engine_CSGO:
 		{
 			g_bPredictedWeaponSwitch = true;
 			g_bViewModelOffsetIndependent = true;
 			
+			g_Game = Game_CSGO;
+
 			WeaponModels_CSGOInit();
+		}
+		case Engine_SDK2013:
+		{
+			char gameFolder[PLATFORM_MAX_PATH + 1];
+			GetGameFolderName(gameFolder, sizeof(gameFolder));
+
+			if (StrEqual(gameFolder, "nmrih"))
+			{
+				g_Game = Game_NMRIH;
+			}
+		}
+		default:
+		{
+			g_Game = Game_Unknown;
 		}
 	}
 
@@ -209,7 +296,7 @@ public void Event_PlayerDeath(Event event, const char[] eventName, bool dontBrod
 		return;
 	}
 
-	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[1]);
 
 	if (viewModel2 != -1)
 	{
@@ -217,8 +304,8 @@ public void Event_PlayerDeath(Event event, const char[] eventName, bool dontBrod
 		SetEntityVisibility(viewModel2, false);
 	}
 
-	g_ClientInfo[client][ClientInfo_ViewModels] = { -1, -1 };
-	g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
+	g_ClientInfo[client].ViewModels = { -1, -1 };
+	g_ClientInfo[client].CustomWeapon = 0;
 }
 
 //TODO: restore weapon model name
@@ -226,10 +313,10 @@ public void OnPluginEnd()
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientInGame(i) && g_ClientInfo[i][ClientInfo_CustomWeapon])
+		if (IsClientInGame(i) && g_ClientInfo[i].CustomWeapon)
 		{
-			int viewModel1 = EntRefToEntIndex(g_ClientInfo[i][ClientInfo_ViewModels][0]);
-			int viewModel2 = EntRefToEntIndex(g_ClientInfo[i][ClientInfo_ViewModels][1]);
+			int viewModel1 = EntRefToEntIndex(g_ClientInfo[i].ViewModels[0]);
+			int viewModel2 = EntRefToEntIndex(g_ClientInfo[i].ViewModels[1]);
 
 			if (viewModel1 != -1)
 			{
@@ -249,7 +336,7 @@ public void OnPluginEnd()
 	{
 		for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 		{
-			if (g_WeaponModelInfo[i][WeaponModelInfo_Status] != WeaponModelInfoStatus_Free)
+			if (g_WeaponModelInfo[i].Status != WeaponModelInfoStatus_Free)
 			{
 				CleanUpSwapWeapon(i);
 			}
@@ -262,7 +349,7 @@ public void OnConfigsExecuted()
 	// In case of map-change
 	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
-		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_API)
+		if (g_WeaponModelInfo[i].Status == WeaponModelInfoStatus_API)
 		{
 			PrecacheWeaponInfo(i);
 		}
@@ -273,8 +360,8 @@ public void OnConfigsExecuted()
 
 public void OnClientPostAdminCheck(int client)
 {
-	g_ClientInfo[client][ClientInfo_ViewModels] = { -1, -1 };
-	g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
+	g_ClientInfo[client].ViewModels = { -1, -1 };
+	g_ClientInfo[client].CustomWeapon = 0;
 
 	SDKHook(client, SDKHook_SpawnPost, OnClientSpawnPost);
 	SDKHook(client, SDKHook_WeaponSwitch, OnWeaponSwitch);
@@ -284,13 +371,24 @@ public void OnClientPostAdminCheck(int client)
 
 public void OnClientSpawnPost(int client)
 {
+	bool isSpectator =  GetClientTeam(client) < 2;
+	
+	// NMRIH:
+	// Spectators have the same team id as non spectators: 0
+	// without this engine check the code will always end here
+	// TODO: Find way to verify nmrih spectator status
+	if (g_Game == Game_NMRIH)
+	{
+		isSpectator = false;
+	}
+
 	// No spectators
-	if (GetClientTeam(client) < 2)
+	if (isSpectator)
 	{
 		return;
 	}
 
-	g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
+	g_ClientInfo[client].CustomWeapon = 0;
 
 	int viewModel1 = GetPlayerViewModel(client, 0);
 	int viewModel2 = GetPlayerViewModel(client, 1);
@@ -318,8 +416,8 @@ public void OnClientSpawnPost(int client)
 		SetPlayerViewModel(client, 1, viewModel2);
 	}
 
-	g_ClientInfo[client][ClientInfo_ViewModels][0] = EntIndexToEntRef(viewModel1);
-	g_ClientInfo[client][ClientInfo_ViewModels][1] = EntIndexToEntRef(viewModel2);
+	g_ClientInfo[client].ViewModels[0] = EntIndexToEntRef(viewModel1);
+	g_ClientInfo[client].ViewModels[1] = EntIndexToEntRef(viewModel2);
 
 	// Hide the secondary view model, in case the player has respawned
 	SetEntityVisibility(viewModel2, false);
@@ -332,8 +430,8 @@ public void OnClientSpawnPost(int client)
 
 public Action OnWeaponSwitch(int client, int weapon)
 {
-	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
-	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[0]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[1]);
 
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
@@ -349,12 +447,12 @@ public Action OnWeaponSwitch(int client, int weapon)
 	for (int i = 0; i < MAX_CUSTOM_WEAPONS; i++)
 	{
 		// Skip unused indexes
-		if (g_WeaponModelInfo[i][WeaponModelInfo_Status] == WeaponModelInfoStatus_Free)
+		if (g_WeaponModelInfo[i].Status == WeaponModelInfoStatus_Free)
 		{
 			continue;
 		}
 
-		if (g_WeaponModelInfo[i][WeaponModelInfo_DefIndex] != -1)
+		if (g_WeaponModelInfo[i].DefIndex != -1)
 		{
 			if (!g_bEconomyWeapons)
 			{
@@ -365,55 +463,59 @@ public Action OnWeaponSwitch(int client, int weapon)
 
 			int itemDefIndex = GetEntData(weapon, g_iOffset_EconItemDefinitionIndex);
 
-			if (g_WeaponModelInfo[i][WeaponModelInfo_DefIndex] != itemDefIndex)
+			if (g_WeaponModelInfo[i].DefIndex != itemDefIndex)
 			{
 				continue;
 			}
 
-			if (g_WeaponModelInfo[i][WeaponModelInfo_Forward] && !ExecuteForward(i, client, weapon, className, itemDefIndex))
+			if (g_WeaponModelInfo[i].Forward && !ExecuteForward(i, client, weapon, className, itemDefIndex))
 			{
 				continue;
 			}
 		}
-		else if (!StrEqual(className, g_WeaponModelInfo[i][WeaponModelInfo_ClassName], false))
+		else if (!StrEqual(className, g_WeaponModelInfo[i].ClassName, false))
 		{
 			continue;
 		}
-		else if (g_WeaponModelInfo[i][WeaponModelInfo_Forward])
+		else if (g_WeaponModelInfo[i].Forward)
 		{
 			if (!ExecuteForward(i, client, weapon, className))
 			{
 				continue;
 			}
 		}
-		else if (g_WeaponModelInfo[i][WeaponModelInfo_TeamNum] && g_WeaponModelInfo[i][WeaponModelInfo_TeamNum] != GetClientTeam(client))
+		else if (g_WeaponModelInfo[i].TeamNum && g_WeaponModelInfo[i].TeamNum != GetClientTeam(client))
 		{
 			continue;
 		}
 
-		g_ClientInfo[client][ClientInfo_SwapWeapon] = -1;
-		g_ClientInfo[client][ClientInfo_CustomWeapon] = weapon;
-		g_ClientInfo[client][ClientInfo_WeaponIndex] = i;
+		g_ClientInfo[client].SwapWeapon = -1;
+		g_ClientInfo[client].CustomWeapon = weapon;
+		g_ClientInfo[client].WeaponIndex = i;
 
 		// Get the class-name if the custom weapon is set by definition index
-		if (g_WeaponModelInfo[i][WeaponModelInfo_ClassName][0] == '\0')
+		if (g_WeaponModelInfo[i].ClassName[0] == '\0')
 		{
-			GetEdictClassname(weapon, g_WeaponModelInfo[i][WeaponModelInfo_ClassName], CLASS_NAME_MAX_LENGTH);
+			GetEdictClassname(weapon, g_WeaponModelInfo[i].ClassName, CLASS_NAME_MAX_LENGTH);
 		}
 
-		if (!g_bEconomyWeapons && EntRefToEntIndex(g_WeaponModelInfo[i][WeaponModelInfo_SwapWeapon]) <= 0)
+		if (!g_bEconomyWeapons && EntRefToEntIndex(g_WeaponModelInfo[i].SwapWeapon) <= 0)
 		{
-			g_WeaponModelInfo[i][WeaponModelInfo_SwapWeapon] = EntIndexToEntRef(CreateSwapWeapon(i, client));
+			g_WeaponModelInfo[i].SwapWeapon = EntIndexToEntRef(CreateSwapWeapon(i, client));
 		}
+
+		// In case there is a holster animation, we will have to wait for the swapped weapon to be holstered.
+		g_ClientInfo[client].ViewModelSwapped = false;
+		g_ClientInfo[client].HolsteredViewModelIndex = GetEntData(viewModel1, g_iOffset_EntityModelIndex);
 
 		return Plugin_Continue;
 	}
 
 	// Client has swapped to a regular weapon
-	if (g_ClientInfo[client][ClientInfo_CustomWeapon] != 0)
+	if (g_ClientInfo[client].CustomWeapon != 0)
 	{
-		g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
-		g_ClientInfo[client][ClientInfo_WeaponIndex] = -1;
+		g_ClientInfo[client].CustomWeapon = 0;
+		g_ClientInfo[client].WeaponIndex = -1;
 	}
 
 	return Plugin_Continue;
@@ -421,7 +523,7 @@ public Action OnWeaponSwitch(int client, int weapon)
 
 int CreateSwapWeapon(int weaponIndex, int client)
 {
-	int customWeapon = g_ClientInfo[client][ClientInfo_CustomWeapon];
+	int customWeapon = g_ClientInfo[client].CustomWeapon;
 	
 	if (g_bViewModelOffsetIndependent)
 	{
@@ -436,11 +538,12 @@ int CreateSwapWeapon(int weaponIndex, int client)
 		}
 	}
 	
-	int swapWeapon = CreateEntityByName(g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ClassName]);
+	int swapWeapon = CreateEntityByName(g_WeaponModelInfo[weaponIndex].ClassName);
 
 	if (swapWeapon == -1)
 	{
-		return LogError("Failed to create swap weapon entity!");
+		LogError("Failed to create swap weapon entity!");
+		return 0;
 	}
 	
 	DispatchSpawn(swapWeapon);
@@ -529,17 +632,17 @@ public void OnWeaponSwitchPost(int client, int weapon)
 		return;
 	}
 
-	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
-	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[0]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[1]);
 
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
 		return;
 	}
 
-	int weaponIndex = g_ClientInfo[client][ClientInfo_WeaponIndex];
+	int weaponIndex = g_ClientInfo[client].WeaponIndex;
 
-	if (weapon != g_ClientInfo[client][ClientInfo_CustomWeapon])
+	if (weapon != g_ClientInfo[client].CustomWeapon)
 	{
 		// Hide the secondary view model. This needs to be done on post because the weapon needs to be switched first
 		if (weaponIndex == -1)
@@ -550,104 +653,120 @@ public void OnWeaponSwitchPost(int client, int weapon)
 			SetEntityVisibility(viewModel2, false);
 			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
 
-			g_ClientInfo[client][ClientInfo_WeaponIndex] = 0;
+			g_ClientInfo[client].WeaponIndex = 0;
 		}
 
 		return;
 	}
 
-	if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex])
+	if (g_WeaponModelInfo[weaponIndex].ViewModelIndex)
 	{
-		SetEntityVisibility(viewModel1, false);
-		SetEntityVisibility(viewModel2, true);
-		
-		if (g_iEngineVersion == Engine_CSGO)
+		int currentViewModelIndex = GetEntData(viewModel1, g_iOffset_EntityModelIndex);
+
+		// The view model index has changed, which means the old weapon is holstered, do the view model swap.
+		if (currentViewModelIndex != g_ClientInfo[client].HolsteredViewModelIndex)
 		{
-			StopParticleEffects(client, viewModel2);
+			g_ClientInfo[client].ViewModelSwapped = true;
+			SwapViewModel(client, weapon, viewModel1, viewModel2);
 		}
-
-		if (g_bPredictedWeaponSwitch)
-		{
-			g_ClientInfo[client][ClientInfo_DrawSequence] = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
-
-			// Switch to an invalid sequence to prevent it from playing sounds before UpdateTransmitStateTime() is called
-			SetEntData(viewModel1, g_iOffset_ViewModelSequence, -1, _, true);
-		}
-		else
-		{
-			SetEntData(viewModel2, g_iOffset_ViewModelSequence, GetEntData(viewModel1, g_iOffset_ViewModelSequence), _, true);
-
-			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
-		}
-
-		SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
-
-		SetEntityModel(weapon, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
-
-		if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SequenceCount] == -1)
-		{
-			int sequenceCount = Animating_GetSequenceCount(weapon);
-
-			if (sequenceCount > 0)
-			{
-				int swapSequences[MAX_SEQEUENCES];
-
-				if (sequenceCount < MAX_SEQEUENCES)
-				{
-
-					BuildSwapSequenceArray(swapSequences, sequenceCount, weapon);
-
-					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SequenceCount] = sequenceCount;
-					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences] = swapSequences;
-				}
-				else
-				{
-					LogError("View model \"%s\" is having too many sequences! (Max %i, is %i) - Increase value of MAX_SEQEUENCES in plugin",
-						g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel],
-						MAX_SEQEUENCES,
-						sequenceCount);
-				}
-			}
-			else
-			{
-				for (int i = 0; i < MAX_SEQEUENCES; i++)
-				{
-					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences][i] = -1;
-				}
-
-				LogError("Failed to get sequence count for weapon using model \"%s\" - Animations may not work as expected",
-					g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModel]);
-			}
-		}
-
-		SetEntData(viewModel1, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex], _, true);
-		SetEntData(viewModel2, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_ViewModelIndex], _, true);
-		
-		SetEntDataFloat(viewModel2, g_iOffset_ViewModelPlaybackRate, GetEntDataFloat(viewModel1, g_iOffset_ViewModelPlaybackRate), true);
-
-		// FIXME: Why am I calling this?
-		ToggleViewModelWeapon(client, viewModel2, weaponIndex);
-		
-		g_ClientInfo[client][ClientInfo_LastSequenceParity] = -1;
 	}
 	else
 	{
-		g_ClientInfo[client][ClientInfo_CustomWeapon] = 0;
+		g_ClientInfo[client].CustomWeapon = 0;
 	}
 
-	if (g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModelIndex])
+	if (g_WeaponModelInfo[weaponIndex].WorldModelIndex)
 	{
-		SetEntData(weapon, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[weaponIndex][WeaponModelInfo_WorldModelIndex], _, true);
+		SetEntData(weapon, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[weaponIndex].WorldModelIndex, _, true);
 	}
+}
+
+void SwapViewModel(int client, int weapon, int viewModel1, int viewModel2)
+{
+	SetEntityVisibility(viewModel1, false);
+	SetEntityVisibility(viewModel2, true);
+	
+	if (g_Game == Game_CSGO)
+	{
+		StopParticleEffects(client, viewModel2);
+	}
+
+	if (g_bPredictedWeaponSwitch)
+	{
+		g_ClientInfo[client].DrawSequence = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
+
+		// Switch to an invalid sequence to prevent it from playing sounds before UpdateTransmitStateTime() is called
+		SetEntData(viewModel1, g_iOffset_ViewModelSequence, -1, _, true);
+	}
+	else
+	{
+		SetEntData(viewModel2, g_iOffset_ViewModelSequence, GetEntData(viewModel1, g_iOffset_ViewModelSequence), _, true);
+
+		SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
+	}
+
+	SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel2);
+
+	int weaponIndex = g_ClientInfo[client].WeaponIndex;
+
+	SetEntityModel(weapon, g_WeaponModelInfo[weaponIndex].ViewModel);
+
+	if (g_WeaponModelInfo[weaponIndex].SequenceCount == -1)
+	{
+		int sequenceCount = Animating_GetSequenceCount(weapon);
+
+		if (sequenceCount > 0)
+		{
+			int swapSequences[MAX_SEQEUENCES];
+
+			if (sequenceCount < MAX_SEQEUENCES)
+			{
+
+				BuildSwapSequenceArray(swapSequences, sequenceCount, weapon);
+
+				g_WeaponModelInfo[weaponIndex].SequenceCount = sequenceCount;
+				g_WeaponModelInfo[weaponIndex].SwapSequences = swapSequences;
+			}
+			else
+			{
+				LogError("View model \"%s\" is having too many sequences! (Max %i, is %i) - Increase value of MAX_SEQEUENCES in plugin",
+					g_WeaponModelInfo[weaponIndex].ViewModel,
+					MAX_SEQEUENCES,
+					sequenceCount);
+			}
+		}
+		else
+		{
+			for (int i = 0; i < MAX_SEQEUENCES; i++)
+			{
+				g_WeaponModelInfo[weaponIndex].SwapSequences[i] = -1;
+			}
+
+			LogError("Failed to get sequence count for weapon using model \"%s\" - Animations may not work as expected",
+				g_WeaponModelInfo[weaponIndex].ViewModel);
+		}
+	}
+
+	SetEntData(viewModel1, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex].ViewModelIndex, _, true);
+	SetEntData(viewModel2, g_iOffset_EntityModelIndex, g_WeaponModelInfo[weaponIndex].ViewModelIndex, _, true);
+	
+	SetEntDataFloat(viewModel2, g_iOffset_ViewModelPlaybackRate, GetEntDataFloat(viewModel1, g_iOffset_ViewModelPlaybackRate), true);
+
+	// FIXME: Why am I calling this?
+	ToggleViewModelWeapon(client, viewModel2, weaponIndex);
+	
+	g_ClientInfo[client].LastSequenceParity = -1;
 }
 
 void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 {
 	int swapWeapon;
 
-	if ((g_ClientInfo[client][ClientInfo_ToggleSequence] = !g_ClientInfo[client][ClientInfo_ToggleSequence]))
+	bool toggle = g_ClientInfo[client].ToggleSequence = !g_ClientInfo[client].ToggleSequence;
+
+	if (toggle)
 	{
-		swapWeapon = EntRefToEntIndex(g_bEconomyWeapons ? g_ClientInfo[client][ClientInfo_SwapWeapon] : g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon]);
+		swapWeapon = EntRefToEntIndex(g_bEconomyWeapons ? g_ClientInfo[client].SwapWeapon : g_WeaponModelInfo[weaponIndex].SwapWeapon);
 
 		if (swapWeapon == -1)
 		{
@@ -655,17 +774,17 @@ void ToggleViewModelWeapon(int client, int viewModel, int weaponIndex)
 
 			if (g_bEconomyWeapons)
 			{
-				g_ClientInfo[client][ClientInfo_SwapWeapon] = EntIndexToEntRef(swapWeapon);
+				g_ClientInfo[client].SwapWeapon = EntIndexToEntRef(swapWeapon);
 			}
 			else
 			{
-				g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapWeapon] = EntIndexToEntRef(swapWeapon);
+				g_WeaponModelInfo[weaponIndex].SwapWeapon = EntIndexToEntRef(swapWeapon);
 			}
 		}
 	}
 	else
 	{
-		swapWeapon = g_ClientInfo[client][ClientInfo_CustomWeapon];
+		swapWeapon = g_ClientInfo[client].CustomWeapon;
 	}
 
 	SetEntDataEnt2(viewModel, g_iOffset_ViewModelWeapon, swapWeapon, true);
@@ -679,17 +798,37 @@ public void OnClientPostThinkPost(int client)
 		return;
 	}
 
-	if (g_ClientInfo[client][ClientInfo_CustomWeapon] == 0)
+	int weapon = g_ClientInfo[client].CustomWeapon;
+	if (weapon == 0)
 	{
 		return;
 	}
 
-	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][0]);
-	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client][ClientInfo_ViewModels][1]);
+	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[0]);
+	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[1]);
 
 	if (viewModel1 == -1 || viewModel2 == -1)
 	{
 		return;
+	}
+
+	if (!g_ClientInfo[client].ViewModelSwapped)
+	{
+		int currentViewModelIndex = GetEntData(viewModel1, g_iOffset_EntityModelIndex);
+
+		// The view model index has changed, which means the old weapon is holstered, do the view model swap.
+		if (currentViewModelIndex != g_ClientInfo[client].HolsteredViewModelIndex)
+		{
+			g_ClientInfo[client].ViewModelSwapped = true;
+			SwapViewModel(client, weapon, viewModel1, viewModel2);
+		}
+	}
+	else
+	{
+		bool weaponVisible = GetEntityVisibility(weapon);
+
+		// Copy the weapon visiblility state to the secondary view model.
+		SetEntityVisibility(viewModel2, weaponVisible);
 	}
 
 	int sequence = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
@@ -698,7 +837,7 @@ public void OnClientPostThinkPost(int client)
 	
 	if (g_bPredictedWeaponSwitch)
 	{
-		drawSequence = g_ClientInfo[client][ClientInfo_DrawSequence];
+		drawSequence = g_ClientInfo[client].DrawSequence;
 		
 		if (sequence == -1)
 		{
@@ -716,19 +855,19 @@ public void OnClientPostThinkPost(int client)
 	int sequenceParity = GetEntData(viewModel1, newSequenceParityOffset);
 
 	// Sequence has not changed since last think
-	if (sequence == g_ClientInfo[client][ClientInfo_LastSequence])
+	if (sequence == g_ClientInfo[client].LastSequence)
 	{
 		// Skip on weapon switch
-		if (g_ClientInfo[client][ClientInfo_LastSequenceParity] != -1)
+		if (g_ClientInfo[client].LastSequenceParity != -1)
 		{
 			// Skip if sequence hasn't finished
-			if (sequenceParity == g_ClientInfo[client][ClientInfo_LastSequenceParity])
+			if (sequenceParity == g_ClientInfo[client].LastSequenceParity)
 			{
 				return;
 			}
 
-			int weaponIndex = g_ClientInfo[client][ClientInfo_WeaponIndex];
-			int swapSequence = g_WeaponModelInfo[weaponIndex][WeaponModelInfo_SwapSequences][sequence];
+			int weaponIndex = g_ClientInfo[client].WeaponIndex;
+			int swapSequence = g_WeaponModelInfo[weaponIndex].SwapSequences[sequence];
 			
 			// Change to swap sequence, if present
 			if (swapSequence != -1)
@@ -736,7 +875,7 @@ public void OnClientPostThinkPost(int client)
 				SetEntData(viewModel1, g_iOffset_ViewModelSequence, swapSequence, _, true);
 				SetEntData(viewModel2, g_iOffset_ViewModelSequence, swapSequence, _, true);
 
-				g_ClientInfo[client][ClientInfo_LastSequence] = swapSequence;
+				g_ClientInfo[client].LastSequence = swapSequence;
 			}
 			else
 			{
@@ -750,15 +889,15 @@ public void OnClientPostThinkPost(int client)
 		{
 			SDKCall(g_hSDKCall_Entity_UpdateTransmitState, viewModel1);
 
-			g_ClientInfo[client][ClientInfo_DrawSequence] = -1;
+			g_ClientInfo[client].DrawSequence = -1;
 		}
 		
 		SetEntData(viewModel2, g_iOffset_ViewModelSequence, sequence, _, true);
 
-		g_ClientInfo[client][ClientInfo_LastSequence] = sequence;
+		g_ClientInfo[client].LastSequence = sequence;
 	}
 	
-	g_ClientInfo[client][ClientInfo_LastSequenceParity] = sequenceParity;
+	g_ClientInfo[client].LastSequenceParity = sequenceParity;
 }
 
 void InitDataMapOffset(int &offset, int entity, const char[] propName)
