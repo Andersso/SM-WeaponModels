@@ -124,7 +124,6 @@ enum Games
 Games g_Game;
 
 char g_szViewModelClassName[CLASS_NAME_MAX_LENGTH] = "predicted_viewmodel";
-char g_szWeaponPrefix[CLASS_NAME_MAX_LENGTH] = "weapon_";
 
 enum struct ClientInfo
 {
@@ -228,7 +227,6 @@ public void OnPluginStart()
 		case Engine_TF2:
 		{
 			g_szViewModelClassName = "tf_viewmodel";
-			g_szWeaponPrefix = "tf_weapon_";
 
 			g_Game = Game_TF2;
 		}

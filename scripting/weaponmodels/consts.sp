@@ -34,5 +34,3 @@
 #define SWAP_SEQ_PAIRED (1 << 31)
 
 #define MAX_WEAPONS 48
-
-#define ACT_VM_HOLSTER 172
