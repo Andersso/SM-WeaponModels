@@ -193,7 +193,7 @@ bool GetEntityVisibility(int entity)
 {
 	int flags = GetEntData(entity, g_iOffset_EntityEffects);
 
-	return flags & EF_NODRAW == 0;
+	return !(flags & EF_NODRAW);
 }
 
 // This function simulates the equivalent function in the SDK
