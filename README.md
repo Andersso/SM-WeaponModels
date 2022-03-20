@@ -16,9 +16,9 @@ Changing the view model is not intended to be possible server-side, and therefor
 ## Requirements
  * SourceMod 1.10 or higher
  * A view model should work optimally if these requirements are met:
-  - Matching activities used by the original model
-  - More than one fire animation
-  - Contains an arm model (CS:GO)
+   * Matching activities used by the original model
+   * More than one fire animation
+   * Contains an arm model (CS:GO)
 
 ## Adding a custom model in config
 The config file is located in the SourceMod config directory and is named weaponmodels_config.cfg
