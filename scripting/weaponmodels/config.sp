@@ -86,10 +86,6 @@ void LoadConfig()
 				}
 
 				g_WeaponModelInfo[weaponIndex].DefIndex = defIndex;
-
-				#if defined DEBUG_WEAPONSWAP
-				//CleanUpSwapWeapon(weaponIndex);
-				#endif
 				
 				keyValues.GetString("ViewModel", g_WeaponModelInfo[weaponIndex].ViewModel, PLATFORM_MAX_PATH + 1);
 				keyValues.GetString("WorldModel", g_WeaponModelInfo[weaponIndex].WorldModel, PLATFORM_MAX_PATH + 1);
