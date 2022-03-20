@@ -293,12 +293,15 @@ public void OnClientPostAdminCheck(int client)
 
 public void OnClientSpawnPost(int client)
 {
-	// No spectators
-	if (GetClientTeam(client) < 2)
+	//in nmrih, spectators and players are the same team id. 
+	if (g_iEngineVersion != Engine_SDK2013)
 	{
-		return;
+		// No spectators
+		if (GetClientTeam(client) < 2)
+		{
+			return;
+		}
 	}
-
 	g_ClientInfo[client].CustomWeapon = 0;
 
 	int viewModel1 = GetPlayerViewModel(client, 0);
@@ -739,7 +742,7 @@ public void OnClientPostThinkPost(int client)
 		bool weaponVisible = GetEntityVisibility(weapon);
 
 		// Copy the weapon visiblility state to the secondary view model.
-		SetEntityVisibility(viewModel2, weaponVisible);
+		SetEntityVisibility(viewModel1, !weaponVisible);
 	}
 
 	int sequence = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
