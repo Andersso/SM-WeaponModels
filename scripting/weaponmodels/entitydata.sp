@@ -189,6 +189,13 @@ void SetEntityVisibility(int entity, bool show)
 	SetEntData(entity, g_iOffset_EntityEffects, show ? flags & ~EF_NODRAW : flags | EF_NODRAW, _, true);
 }
 
+bool GetEntityVisibility(int entity)
+{
+	int flags = GetEntData(entity, g_iOffset_EntityEffects);
+
+	return flags & EF_NODRAW == 0;
+}
+
 // This function simulates the equivalent function in the SDK
 // The game has two methods for getting the sequence count:
 // 1. Local sequence count if the model has sequences built in the model itself

@@ -734,6 +734,13 @@ public void OnClientPostThinkPost(int client)
 			SwapViewModel(client, weapon, viewModel1, viewModel2);
 		}
 	}
+	else
+	{
+		bool weaponVisible = GetEntityVisibility(weapon);
+
+		// Copy the weapon visiblility state to the secondary view model.
+		SetEntityVisibility(viewModel2, weaponVisible);
+	}
 
 	int sequence = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
 
