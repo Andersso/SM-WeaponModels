@@ -26,6 +26,8 @@ void WeaponModels_ConfigInit()
 public Action Command_ReloadConfig(int client, int numArgs)
 {
 	LoadConfig();
+
+	return Plugin_Handled;
 }
 
 void LoadConfig()

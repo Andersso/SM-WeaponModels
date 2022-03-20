@@ -178,6 +178,8 @@ public int Native_RemoveWeaponModel(Handle plugin, int numParams)
 	}
 	
 	g_WeaponModelInfo[weaponIndex].Status = WeaponModelInfoStatus_Free;
+
+	return 0;
 }
 
 bool ExecuteForward(int weaponIndex, int client, int weapon, const char[] className, int itemDefIndex = -1)

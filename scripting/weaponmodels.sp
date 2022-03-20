@@ -91,7 +91,7 @@
 // This should be on top, sm includes still not updated as of today
 #pragma newdecls required
 
-Plugin myinfo =
+public Plugin myinfo =
 {
 	name        = PLUGIN_NAME,
 	author      = "Andersso, Thijs",
