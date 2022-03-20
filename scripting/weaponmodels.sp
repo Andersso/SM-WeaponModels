@@ -738,11 +738,13 @@ public void OnClientPostThinkPost(int client)
 		}
 	}
 	else
-	{
-		bool weaponVisible = GetEntityVisibility(weapon);
-
-		// Copy the weapon visiblility state to the secondary view model.
-		SetEntityVisibility(viewModel1, !weaponVisible);
+	{	
+		bool weaponVisible = GetEntityVisibility(viewModel1);
+		
+		// only change if visibility true, to reduce networking
+		if (weaponVisible){
+			SetEntityVisibility(viewModel1, !weaponVisible);
+		}
 	}
 
 	int sequence = GetEntData(viewModel1, g_iOffset_ViewModelSequence);
