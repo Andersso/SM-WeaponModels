@@ -393,6 +393,12 @@ public void OnClientSpawnPost(int client)
 	int viewModel1 = GetPlayerViewModel(client, 0);
 	int viewModel2 = GetPlayerViewModel(client, 1);
 
+	// If we have for some reason spawned without a primary view model, abort.
+	if (viewModel1 == -1)
+	{
+		return;
+	}
+
 	// If a secondary view model doesn't exist, create one
 	if (viewModel2 == -1)
 	{
