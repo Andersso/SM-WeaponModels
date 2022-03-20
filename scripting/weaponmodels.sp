@@ -827,6 +827,10 @@ public void OnClientPostThinkPost(int client)
 	{
 		bool weaponVisible = GetEntityVisibility(weapon);
 
+		// Ensure that viewModel1 always is invisible while the custom view model is active.
+		// For instance, the visibility can be toggled back when the weapon is being redeployed. (drop physics object)
+		SetEntityVisibility(viewModel1, false);
+
 		// Copy the weapon visiblility state to the secondary view model.
 		SetEntityVisibility(viewModel2, weaponVisible);
 	}
