@@ -11,15 +11,16 @@ Changing the view model is not intended to be possible server-side, and therefor
  * **Day of Defeat: Source**
  * **Half-Life 2: Deathmatch** - *Untested, but is expected to work*
  * **Team-Fortress 2** - *Not recommended, see [Custom Weapons](https://forums.alliedmods.net/showthread.php?p=2105924) plugin instead.*
+ * **No More Room in Hell** - Thanks zeThijs!
 
 ## Requirements
- * SourceMod 1.8 or higher
+ * SourceMod 1.10 or higher
  * A view model should work optimally if these requirements are met:
   - Matching activities used by the original model
   - More than one fire animation
   - Contains an arm model (CS:GO)
 
-##Adding a custom model in config
+## Adding a custom model in config
 The config file is located in the SourceMod config directory and is named weaponmodels_config.cfg
 
 Inside the config you should find a key named "ViewModelConfig". Inside this key, add the following:
@@ -45,12 +46,13 @@ Here is an example
 	"BlockLAW" "1" 
 }
 ```
-###List of weapons, class-names and item definition indexes
+### List of weapons, Classnames and item definition indexes
  * [Counter-Strike: Source](#list-of-weapons---css)
  * [Counter-Strike: Global Offensive](#list-of-weapons---csgo)
  * [Day of Defeat: Source](#list-of-weapons---dods)
  * [Half-Life 2: Deathmatch](#list-of-weapons---hl2dm)
  * [Team-Fortress 2](#list-of-weapons---tf2)
+ * [No More Room in Hell](#list-of-weapons---nmrih)
 
 ## How to use the API
 
@@ -103,7 +105,7 @@ public bool WeaponModels_OnWeapon(int weaponIndex, int client, int weapon, const
 ## List of weapons - CS:S
 *Some weapons may be missing or invalid*
 
-Name | Class-Name
+Name | Classname
 --- | ---
 Glock 18 | weapon_glock
 USP | weapon_usp
@@ -134,10 +136,10 @@ High Explosive Grenade | weapon_hegrenade
 Smoke Grenade | weapon_smokegrenade 
 C4 Explosive | weapon_c4
 
-##List of weapons - CS:GO
+## List of weapons - CS:GO
 *Some weapons may be missing or invalid*
 
-Name | Class-Name | Item definition index 
+Name | Classname | Item definition index 
 --- | --- | ---
 Desert Eagle | weapon_deagle | 1
 Dual Berettas | weapon_elite | 2
@@ -191,7 +193,7 @@ Huntsman Knife | weapon_knife | 509
 ## List of weapons - DoD:S
 *Some weapons may be missing or invalid*
 
-Name | Class-Name
+Name | Classname
 --- | ---
 Spade | weapon_spade
 Knife | weapon_amerknife
@@ -221,7 +223,7 @@ Riflegren GER | weapon_riflegren_ger
 ## List of weapons - HL2:DM
 *Some weapons may be missing or invalid*
 
-Name | Class-Name
+Name | Classname
 --- | ---
 Crowbar | weapon_crowbar
 Pistol | weapon_pistol
@@ -238,7 +240,7 @@ Bugbait | weapon_bugbait
 ## List of weapons - TF2
 *Some weapons may be missing or invalid*
 
-Name | Class-Name | Item definition index 
+Name | Classname | Item definition index 
 --- | --- | ---
 Bat | tf_weapon_bat | 0
 Bottle | tf_weapon_bottle | 1
@@ -552,3 +554,105 @@ Air Strike | tf_weapon_rocketlauncher_airstrike | 1104
 Self-Aware Beauty Mark | tf_weapon_jar | 1105
 Mutated Milk | tf_weapon_jar_milk | 1121
 Fireproof Secret Diary | tf_weapon_spellbook | 5605
+
+## List of weapons - NMRIH
+*Some weapons may be missing or invalid*
+
+#### Handguns:
+
+Name | Classname
+--- | ---
+Colt 1911 | fa_1911
+Glock 17 | fa_glock17
+Strum Ruger MK III | fa_mkiii
+S&W 686-6 | fa_sw686
+Beretta M92FS | fa_m92fs
+
+#### Rifles:
+
+Name | Classname
+--- | ---
+Ruger 10/22 | fa_1022
+Ruger 10/22 ( 25 Bullets ) | fa_1022_25mag
+CZ858 | fa_cz858
+Sako 85 | fa_sako85
+Sako 85 ( No Ironsight ) | fa_sako85_ironsights
+Simonov SKS | fa_sks
+Simonov SKS (No Bayonet) | fa_sks_nobayo
+Remington JAE-700 | fa_jae700
+
+#### Shotguns:
+
+Name | Classname
+--- | ---
+Mossberg 500A | fa_500a
+Remington 870 Police Magnum | fa_870
+Winchester Super X3 | fa_superx3
+SV-10 | fa_sv10
+Winchester 1892 | fa_winchester1892
+
+#### Machineguns:
+
+Name | Classname
+--- | ---
+Mac-10 | fa_mac10
+
+#### Military:
+
+Name | Classname
+--- | ---
+MP5A4 | fa_mp5a3
+M16A4 (ACOG + Handle) | fa_m16a4
+FN-FAL | fa_fnfal
+M16A4 (Pure) | fa_m16a4_carryhandle 
+
+#### Archery:
+
+Name | Classname
+--- | ---
+PSE Deer Hunter | bow_deerhunter
+
+#### Melees:
+
+Name | Classname
+--- | ---
+Abrasive Saw | me_abrasivesaw
+Fire Axe | me_axe_fire
+Baseball Bat | me_bat_metal
+Chainsaw | me_chainsaw
+Cleaver | me_cleaver
+Crowbar | me_crowbar
+E-Tool | me_etool
+FUBAR | me_fubar
+Hatchet | me_hatchet
+Kitchen Knife | me_kitknife
+Machete | me_machete
+Pickaxe | me_pickaxe
+Pipe | me_pipe_lead
+Shovel | me_shovel
+Sledgehammer | me_sledge
+Wrench | me_wrench
+
+#### Explosives:
+
+Name | Classname
+--- | ---
+Grenade | exp_grenade
+Molotov | exp_molotov
+TNT | exp_tnt
+
+#### Items:
+
+Name | Classname
+--- | ---
+Barricade Hammer | tool_barricade
+Fire Extinguisher | tool_extinguisher
+Flare Gun | tool_flare_gun
+Welder | tool_welder
+Bandages | item_bandages
+First Aid | item_first_aid
+Maglite (Flashlight) | item_maglite
+Pills | item_pills
+Walkie Talkie | item_walkietalkie
+Zippo Lighter | item_zippo
+Gene Therapy | item_gene_therapy
