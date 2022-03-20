@@ -18,7 +18,48 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+/* TODO nmrih:
 
+ * Find what's causing nodraw flag overwrite in SetEntityVisibility, find a better fix than to delay frames
+	HINT: 	This is likely caused by a holster animation, and subsequent unholster of new weapon
+			This follows up nicely in the following issue:
+ * Switching a weapon doesn't immediately play the weapon selection animation; delay and singly janky movement at switch
+					m_nSequence recording:
+					4 (hands idle01)
+	switch superx3:	4->1 (superx idle01dry)
+					1->6 (superx unholster)
+					6->0 (superx idle01)
+	switch back to hands:
+				0	 to 7	
+				0	 to 7	
+				7	 to 4	
+				7	 to 4	
+				4	 to 0	
+				4	 to 0	
+				0	 to 4	
+				0	 to 4	
+	As you can see, this looks it would be janky, and indeed, that is the case in game
+
+ * Transition code to new sourcemod syntax
+ * Find way to verify nmrih spectator status in OnClientSpawnPost
+ 
+ * Feature: more viewmodel support ( such as for melees, items, tools )
+ 
+ * Optional: (gun)sound overrides
+			gun feel is heavily influenced by its sounds. Custom sounds may elevate immersion drastically
+			alas, this may be impossible
+ * Optional: per-client toggle and/or permissions. Could be fun for some kind of ingame shop.
+ 
+ * current:  check if can do 10 frames, repeating if fail, for viewmodel1
+ *			 weapon switch fade in/out
+ 			 and/or hide viewmodel2 after time | weapon holster sequence complete
+ *			 I need a global variable storing weapon visibility status
+
+ * Changes:
+ * 
+ * plugin is reloaded while players are ingame.
+
+*/
 // TODO:
 // Test L4D1/L4D2
 // Toggle animation seems to bug on some rare occasions
@@ -42,7 +83,7 @@
 #include <sdkhooks>
 
 #define PLUGIN_NAME "Custom Weapon Models"
-#define PLUGIN_VERSION "1.2"
+#define PLUGIN_VERSION "1.3"
 
 #include "weaponmodels/consts.sp"
 #include "weaponmodels/entitydata.sp"
@@ -53,7 +94,7 @@
 Plugin myinfo =
 {
 	name        = PLUGIN_NAME,
-	author      = "Andersso",
+	author      = "Andersso, Thijs",
 	description = "Change any weapon model",
 	version     = PLUGIN_VERSION,
 	url         = "http://www.sourcemod.net/"
@@ -68,7 +109,19 @@ bool g_bEconomyWeapons = false;
 // This value should be true if view model offsets doesn't differ between different weapons (In this case only CS:GO)
 bool g_bViewModelOffsetIndependent = false;
 
-EngineVersion g_iEngineVersion;
+enum Games
+{
+	Game_Unknown,
+	Game_DODS,
+	Game_TF2,
+	Game_L4D,
+	Game_L4D2,
+	Game_Portal2,
+	Game_CSGO,
+	Game_NMRIH
+};
+
+Games g_Game;
 
 char g_szViewModelClassName[CLASS_NAME_MAX_LENGTH] = "predicted_viewmodel";
 char g_szWeaponPrefix[CLASS_NAME_MAX_LENGTH] = "weapon_";
@@ -163,35 +216,62 @@ public void OnPluginStart()
 	CreateConVar("sm_weaponmodels_version", PLUGIN_VERSION, PLUGIN_NAME, FCVAR_NOTIFY|FCVAR_DONTRECORD);
 
 	WeaponModels_ConfigInit();
-	
-	char gameFolder[PLATFORM_MAX_PATH + 1];
-	GetGameFolderName(gameFolder, sizeof(gameFolder));
 
-	switch (g_iEngineVersion = GetEngineVersion())
+	switch (GetEngineVersion())
 	{
 		case Engine_DODS:
 		{
 			g_szViewModelClassName = "dod_viewmodel";
+
+			g_Game = Game_DODS;
 		}
 		case Engine_TF2:
 		{
 			g_szViewModelClassName = "tf_viewmodel";
 			g_szWeaponPrefix = "tf_weapon_";
+
+			g_Game = Game_TF2;
 		}
-		case Engine_Left4Dead, Engine_Left4Dead2, Engine_Portal2:
+		case Engine_Left4Dead:
 		{
 			g_bPredictedWeaponSwitch = true;
+
+			g_Game = Game_L4D;
+		}
+		case Engine_Left4Dead2:
+		{
+			g_bPredictedWeaponSwitch = true;
+
+			g_Game = Game_L4D2;
+		}
+		case Engine_Portal2:
+		{
+			g_bPredictedWeaponSwitch = true;
+
+			g_Game = Game_Portal2;
 		}
 		case Engine_CSGO:
 		{
 			g_bPredictedWeaponSwitch = true;
 			g_bViewModelOffsetIndependent = true;
 			
+			g_Game = Game_CSGO;
+
 			WeaponModels_CSGOInit();
 		}
 		case Engine_SDK2013:
 		{
-			
+			char gameFolder[PLATFORM_MAX_PATH + 1];
+			GetGameFolderName(gameFolder, sizeof(gameFolder));
+
+			if (StrEqual(gameFolder, "nmrih"))
+			{
+				g_Game = Game_NMRIH;
+			}
+		}
+		default:
+		{
+			g_Game = Game_Unknown;
 		}
 	}
 
@@ -293,8 +373,19 @@ public void OnClientPostAdminCheck(int client)
 
 public void OnClientSpawnPost(int client)
 {
+	bool isSpectator =  GetClientTeam(client) < 2;
+	
+	// NMRIH:
+	// Spectators have the same team id as non spectators: 0
+	// without this engine check the code will always end here
+	// TODO: Find way to verify nmrih spectator status
+	if (g_Game == Game_NMRIH)
+	{
+		isSpectator = false;
+	}
+
 	// No spectators
-	if (GetClientTeam(client) < 2)
+	if (isSpectator)
 	{
 		return;
 	}
@@ -597,7 +688,7 @@ void SwapViewModel(int client, int weapon, int viewModel1, int viewModel2)
 	SetEntityVisibility(viewModel1, false);
 	SetEntityVisibility(viewModel2, true);
 	
-	if (g_iEngineVersion == Engine_CSGO)
+	if (g_Game == Game_CSGO)
 	{
 		StopParticleEffects(client, viewModel2);
 	}
