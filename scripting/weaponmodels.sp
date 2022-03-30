@@ -241,7 +241,7 @@ public void OnPluginStart()
 			if (StrEqual(gameFolder, "nmrih"))
 			{
 				g_Game = Game_NMRIH;
-				HookEvent("nmrih_reset_map", Event_nmrih_reset_map);
+
 			}
 		}
 		default:
@@ -335,47 +335,31 @@ public void OnConfigsExecuted()
 	LoadConfig();
 	
 }
+
 /**
  * Hook newly fired flare projectile
  */
 public void OnEntityCreated(int entity, const char[] classname)
 {
-	Replace_Weapon_WorldModel(entity, classname);
-}
-
-// /**
-//  * Hook new round: Scan all entities and replace worldmodels.
-//  */
-public void Event_nmrih_reset_map(Event event, const char[] eventName, bool dontBrodcast)
-{
-	//Replace_Weapon_WorldModels();
-}
-// /**
-//  * Scan all entities and replace worldmodels. To be used in nmrih_reset_map (NMRiH), or equivalent game specific newround event.
-//  */
-// public void ReplaceAll_Weapon_WorldModels()
-// {
-// 	int entity = 8;
-// 	for (entity; entity<2048; entity++){
-// 		if(!IsValidEntity(entity)) 
-// 		{
-// 			return;
-// 		}
-// 		Replace_Weapon_WorldModel(entity);
-// 	}
-// }
-
-/**
- * Replace entity worldmodel, if custom weapon defined.
- */
-public void Replace_Weapon_WorldModel(int entity, const char[] classname)
-{
+	//Replace entity worldmodel, if custom weapon defined.
 	for (int i; i<MAX_CUSTOM_WEAPONS; i++){
 		if (StrEqual(g_WeaponModelInfo[i].ClassName, classname)	&& g_WeaponModelInfo[i].WorldModelIndex )
 		{
-			SetEntData(entity, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[i].WorldModelIndex, _, true);
+			DataPack data = CreateDataPack();
+			data.WriteCell(EntIndexToEntRef(entity));
+			data.WriteCell(i);
+			RequestFrame(update_entmodel, data);
 		}
 	}
+}
+
+public void update_entmodel(DataPack data){
+	data.Reset();
+	int entindex = EntRefToEntIndex(data.ReadCell());
+	int weaponindex = data.ReadCell();
+	SetEntData(entindex, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[weaponindex].WorldModelIndex, _, true);
+
+	delete data;
 }
 
 public void OnClientPostAdminCheck(int client)
@@ -665,6 +649,7 @@ public void OnWeaponSwitchPost(int client, int weapon)
 	{
 		return;
 	}
+
 
 	int weaponIndex = g_ClientInfo[client].WeaponIndex;
 
