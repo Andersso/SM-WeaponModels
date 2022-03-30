@@ -20,44 +20,20 @@
  */
 /* TODO nmrih:
 
- * Find what's causing nodraw flag overwrite in SetEntityVisibility, find a better fix than to delay frames
-	HINT: 	This is likely caused by a holster animation, and subsequent unholster of new weapon
-			This follows up nicely in the following issue:
- * Switching a weapon doesn't immediately play the weapon selection animation; delay and singly janky movement at switch
-					m_nSequence recording:
-					4 (hands idle01)
-	switch superx3:	4->1 (superx idle01dry)
-					1->6 (superx unholster)
-					6->0 (superx idle01)
-	switch back to hands:
-				0	 to 7	
-				0	 to 7	
-				7	 to 4	
-				7	 to 4	
-				4	 to 0	
-				4	 to 0	
-				0	 to 4	
-				0	 to 4	
-	As you can see, this looks it would be janky, and indeed, that is the case in game
+ *	FIXED  	Find what's causing nodraw flag overwrite in SetEntityVisibility, find a better fix than to delay frames
+			HINT: This is likely caused by a holster animation, and subsequent unholster of new weapon
 
  * Transition code to new sourcemod syntax
  * Find way to verify nmrih spectator status in OnClientSpawnPost
  
- * Feature: more viewmodel support ( such as for melees, items, tools )
+ * Feature: more viewmodel support ( such as for melees, items, tools )	- is inherently possible!
  
  * Optional: (gun)sound overrides
 			gun feel is heavily influenced by its sounds. Custom sounds may elevate immersion drastically
 			alas, this may be impossible
  * Optional: per-client toggle and/or permissions. Could be fun for some kind of ingame shop.
- 
- * current:  check if can do 10 frames, repeating if fail, for viewmodel1
- *			 weapon switch fade in/out
- 			 and/or hide viewmodel2 after time | weapon holster sequence complete
- *			 I need a global variable storing weapon visibility status
-
- * Changes:
- * 
- * plugin is reloaded while players are ingame.
+ * qol Changes:
+ * When plugin is reloaded while players are ingame: Set viewmodel correctly for ingame players.
 
 */
 // TODO:
@@ -265,6 +241,7 @@ public void OnPluginStart()
 			if (StrEqual(gameFolder, "nmrih"))
 			{
 				g_Game = Game_NMRIH;
+				HookEvent("nmrih_reset_map", Event_nmrih_reset_map);
 			}
 		}
 		default:
@@ -356,6 +333,49 @@ public void OnConfigsExecuted()
 	}
 
 	LoadConfig();
+	
+}
+/**
+ * Hook newly fired flare projectile
+ */
+public void OnEntityCreated(int entity, const char[] classname)
+{
+	Replace_Weapon_WorldModel(entity, classname);
+}
+
+// /**
+//  * Hook new round: Scan all entities and replace worldmodels.
+//  */
+public void Event_nmrih_reset_map(Event event, const char[] eventName, bool dontBrodcast)
+{
+	//Replace_Weapon_WorldModels();
+}
+// /**
+//  * Scan all entities and replace worldmodels. To be used in nmrih_reset_map (NMRiH), or equivalent game specific newround event.
+//  */
+// public void ReplaceAll_Weapon_WorldModels()
+// {
+// 	int entity = 8;
+// 	for (entity; entity<2048; entity++){
+// 		if(!IsValidEntity(entity)) 
+// 		{
+// 			return;
+// 		}
+// 		Replace_Weapon_WorldModel(entity);
+// 	}
+// }
+
+/**
+ * Replace entity worldmodel, if custom weapon defined.
+ */
+public void Replace_Weapon_WorldModel(int entity, const char[] classname)
+{
+	for (int i; i<MAX_CUSTOM_WEAPONS; i++){
+		if (StrEqual(g_WeaponModelInfo[i].ClassName, classname)	&& g_WeaponModelInfo[i].WorldModelIndex )
+		{
+			SetEntData(entity, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[i].WorldModelIndex, _, true);
+		}
+	}
 }
 
 public void OnClientPostAdminCheck(int client)
@@ -439,7 +459,7 @@ public Action OnWeaponSwitch(int client, int weapon)
 	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[0]);
 	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[1]);
 
-	if (viewModel1 == -1 || viewModel2 == -1)
+	if (viewModel1 == -1 || viewModel2 == -1 || weapon == -1)
 	{
 		return Plugin_Continue;
 	}

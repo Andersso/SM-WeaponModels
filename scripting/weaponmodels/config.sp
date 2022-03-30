@@ -89,7 +89,7 @@ void LoadConfig()
 
 				g_WeaponModelInfo[weaponIndex].DefIndex = defIndex;
 				
-				keyValues.GetString("ViewModel", g_WeaponModelInfo[weaponIndex].ViewModel, PLATFORM_MAX_PATH + 1);
+				keyValues.GetString("ViewModel", g_WeaponModelInfo[weaponIndex].ViewModel, PLATFORM_MAX_PATH + 1);  
 				keyValues.GetString("WorldModel", g_WeaponModelInfo[weaponIndex].WorldModel, PLATFORM_MAX_PATH + 1);
 
 				PrecacheWeaponInfo(weaponIndex);
