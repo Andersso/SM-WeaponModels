@@ -364,12 +364,12 @@ public void OnEntityCreated(int entity, const char[] classname)
 			DataPack data = CreateDataPack();
 			data.WriteCell(EntIndexToEntRef(entity));
 			data.WriteCell(i);
-			RequestFrame(update_entmodel, data);		//delay by one gameframe untill we are able to change entdata
+			RequestFrame(FrameDelay_CngEntModel, data);		//delay by one gameframe untill we are able to change entdata
 		}
 	}
 }
 
-public void update_entmodel(DataPack data)
+public void FrameDelay_CngEntModel(DataPack data)
 {
 	data.Reset();
 	int entindex = EntRefToEntIndex(data.ReadCell());
