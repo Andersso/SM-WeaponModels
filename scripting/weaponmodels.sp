@@ -30,7 +30,9 @@
  
  * Optional: (gun)sound overrides
 			gun feel is heavily influenced by its sounds. Custom sounds may elevate immersion drastically
-			alas, this may be impossible
+			alas, this may be impossible:
+				It is possible to overwrite sounds in the same sound channel, but this /may/ cause clipping.
+				The best solution is to remove sound events from weapon model, and EmitSound when needed.
  * Optional: per-client toggle and/or permissions. Could be fun for some kind of ingame shop.
  * qol Changes:
  * When plugin is reloaded while players are ingame: Set viewmodel correctly for ingame players.
