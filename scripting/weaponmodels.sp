@@ -84,6 +84,8 @@ bool g_bEconomyWeapons = false;
 
 // This value should be true if view model offsets doesn't differ between different weapons (In this case only CS:GO)
 bool g_bViewModelOffsetIndependent = false;
+//on map change: wait until everything i cached before performing model overwrites. Some times precache has not been finished before entity model overwrites happen.
+bool g_bPrecahceFinished;
 
 enum Games
 {
@@ -169,7 +171,9 @@ void PrecacheWeaponInfo(int weaponIndex)
 {
 	g_WeaponModelInfo[weaponIndex].ViewModelIndex = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex].ViewModel);
 	g_WeaponModelInfo[weaponIndex].WorldModelIndex = PrecacheWeaponInfo_PrecahceModel(g_WeaponModelInfo[weaponIndex].WorldModel);
+    g_bPrecahceFinished = true;
 }
+
 
 int PrecacheWeaponInfo_PrecahceModel(const char[] model)
 {
@@ -285,6 +289,12 @@ public void Event_PlayerDeath(Event event, const char[] eventName, bool dontBrod
 	g_ClientInfo[client].CustomWeapon = 0;
 }
 
+public void OnMapEnd(){
+    //on map change: wait until everything i cached before performing model overwrites
+    g_bPrecahceFinished = false;
+}
+
+
 //TODO: restore weapon model name
 public void OnPluginEnd()
 {
@@ -337,26 +347,37 @@ public void OnConfigsExecuted()
 }
 
 /**
- * Hook newly fired flare projectile
+ * 	Replace entity worldmodel, if it is defined as custom weapon.
  */
 public void OnEntityCreated(int entity, const char[] classname)
 {
-	//Replace entity worldmodel, if custom weapon defined.
+	//Skip if models haven't finished caching.
+	if(!g_bPrecahceFinished) {
+		return;
+	}
+	
 	for (int i; i<MAX_CUSTOM_WEAPONS; i++){
 		if (StrEqual(g_WeaponModelInfo[i].ClassName, classname)	&& g_WeaponModelInfo[i].WorldModelIndex )
 		{
 			DataPack data = CreateDataPack();
 			data.WriteCell(EntIndexToEntRef(entity));
 			data.WriteCell(i);
-			RequestFrame(update_entmodel, data);
+			RequestFrame(update_entmodel, data);		//delay by one gameframe untill we are able to change entdata
 		}
 	}
 }
 
-public void update_entmodel(DataPack data){
+public void update_entmodel(DataPack data)
+{
 	data.Reset();
 	int entindex = EntRefToEntIndex(data.ReadCell());
 	int weaponindex = data.ReadCell();
+
+	if (entindex<1)
+	{
+		return;
+	}
+
 	SetEntData(entindex, g_iOffset_WeaponWorldModelIndex, g_WeaponModelInfo[weaponindex].WorldModelIndex, _, true);
 
 	delete data;
@@ -440,6 +461,12 @@ public void OnClientSpawnPost(int client)
 
 public Action OnWeaponSwitch(int client, int weapon)
 {
+
+	//Weapon switch is sometimes called on clients that just died.
+	if (!IsPlayerAlive(client)){
+		return Plugin_Continue;
+	}
+
 	int viewModel1 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[0]);
 	int viewModel2 = EntRefToEntIndex(g_ClientInfo[client].ViewModels[1]);
 
