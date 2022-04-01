@@ -349,7 +349,7 @@ public void OnConfigsExecuted()
 }
 
 /**
- * 	Replace entity worldmodel, if it is defined as custom weapon.
+ * 	Replace entity worldmodel, if is defined as custom weapon.
  */
 public void OnEntityCreated(int entity, const char[] classname)
 {
