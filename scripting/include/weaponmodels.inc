@@ -58,7 +58,7 @@ public void __pl_weaponmodels_SetNTVOptional()
  * @return						The custom weapon model index, -1 on failure.
  * @error						Maximum amount of custom weapons has been reached.
  */
-native void WeaponModels_AddWeaponByClassName(const char[] className, const char[] viewModel, const char[] worldModel, WeaponModelsFunc _function);
+native int WeaponModels_AddWeaponByClassName(const char[] className, const char[] viewModel, const char[] worldModel, WeaponModelsFunc _function);
 
 /**
  * @brief Adds a weapon model
